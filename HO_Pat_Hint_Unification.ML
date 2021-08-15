@@ -3,7 +3,7 @@ sig
   
   val unify_trace_failure: bool Config.T
   val unify_types: Context.generic -> typ * typ -> Envir.env -> Envir.env
-  val h_unify: Context.generic -> term * term -> Envir.env -> Envir.env * thm
+  val hint_unify: Context.generic -> term * term -> Envir.env -> Envir.env * thm
   val unify: Context.generic -> term * term -> Envir.env -> Envir.env * thm
 
 end
@@ -13,7 +13,7 @@ struct
 
 open Hint_Unif
 
-val unify_trace_failure = Config.declare_bool ("unify_trace_failure", \<^here>) (K false);
+val unify_trace_failure = Config.declare_bool ("unify_trace_failure", ⌂) (K false);
 
 fun string_of_term ctxt env binders t =
   Syntax.string_of_term ctxt (Envir.norm_term env (subst_bounds (map Free binders, t)));
@@ -299,7 +299,7 @@ and cases try_hints_fun hints context (binders,bvars,env,(s,t)) =
       | ((Bound i,_),(Free(f,_),_))    => (clashB context binders i f; raise Pattern.Unif))
   handle exn =>
     let
-      val hint_results = try_hints_fun context Pattern.match h_unify env (s,t) hints
+      val hint_results = try_hints_fun context Pattern.match hint_unify env (s,t) hints
     in
       if null hint_results then
       raise exn else hd hint_results
@@ -338,7 +338,7 @@ and flexrigid context (params as (env,binders,F,Fty,is,t)) =
             handle Pattern.Unif => (proj_fail context params; raise Pattern.Unif)
 
 (*higher-order pattern unification with hints from context*)
-and h_unify context =
+and hint_unify context =
   unif try_hints (Hint_Unif.gen_hint_list (Context.proof_of context)) context [] []
 
 (*higher-order pattern unification without hints*)
