@@ -21,7 +21,7 @@ structure Util = Unification_Util
 fun unify ctxt tp env =
   let
     fun unif () =
-      let
+      (let
         val env = Util.unify_types ctxt (apply2 Term.fastype_of tp) env
         val init_goal = Logic.mk_equals #> Thm.cterm_of ctxt #> Goal.init
         fun create_env_thmq env =
@@ -32,15 +32,15 @@ fun unify ctxt tp env =
           |> init_goal
           (*kind of a hack: resolving against the equality theorem will add the
             flex-flex pairs to the theorem*)
-          |> HEADGOAL (resolve_tac ctxt [@{thm Pure.reflexive}])
+          |> HEADGOAL (resolve_tac ctxt @{thms Pure.reflexive})
           (*conclude the goal and pair with the environment*)
           |> Seq.map (pair env o Goal.conclude)
       in
-        (*find the unifier*)
+        (*find the unifiers*)
         Unify.hounifiers (Context.Proof ctxt, env, [tp])
         (*add the flex-flex pairs to the theorem to fit the unifier signature*)
         |> Seq.maps (create_env_thmq o fst)
-      end
+      end)
       handle Unification_Base.UNIF =>
         let
           val tp' = apply2 (Util.norm_term_unif env) tp

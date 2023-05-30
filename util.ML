@@ -24,6 +24,10 @@ sig
   val seq_try : exn -> 'a Seq.seq -> 'a Seq.seq
   val seq_is_empty : 'a Seq.seq -> (bool * 'a Seq.seq)
 
+  (* tactics *)
+  val CONCAT : tactic list -> tactic
+  val CONCAT' : (int -> tactic) list -> int -> tactic
+
   (* terms and environments *)
   val maxidx_of_terms : term list -> int
   (*returns empty environment with maxidx set to maximum of given terms*)
@@ -155,6 +159,9 @@ fun seq_is_empty sq = case Seq.pull sq of
     NONE => (true, Seq.empty)
   | SOME v => (false, Seq.make (fn () => SOME v))
 
+(* tactics *)
+fun CONCAT tacs = fold_rev (curry op APPEND) tacs no_tac
+fun CONCAT' tacs = fold_rev (curry op APPEND') tacs (K no_tac)
 
 (* terms and environments *)
 fun maxidx_of_terms ts = fold (Integer.max o maxidx_of_term) ts ~1
@@ -283,7 +290,7 @@ fun match_types ctxt (T, U) (env as Envir.Envir {maxidx, tenv, tyenv}) =
     let val tyenv' = Sign.typ_match (Proof_Context.theory_of ctxt) (T, U) tyenv
     in Envir.Envir {maxidx = maxidx, tenv = tenv, tyenv = tyenv'} end)
   handle Type.TYPE_MATCH =>
-    (@{log Logger.DEBUG} ctxt
+    (@{log} ctxt
       (fn _ => Pretty.block [
           Pretty.str "Failed to match types ",
           pretty_types ctxt [norm_type_match tyenv T, U]
@@ -297,7 +304,7 @@ fun unify_types ctxt (T, U) (env as Envir.Envir {maxidx, tenv, tyenv}) =
       Sign.typ_unify (Proof_Context.theory_of ctxt) (T, U) (tyenv, maxidx)
     in Envir.Envir {maxidx = maxidx', tenv = tenv, tyenv = tyenv'} end)
   handle Type.TUNIFY =>
-    (@{log Logger.DEBUG} ctxt
+    (@{log} ctxt
       (fn _ => Pretty.block [
           Pretty.str "Failed to unify types ",
           pretty_types ctxt (map (norm_type_unif tyenv) [T, U])
@@ -354,10 +361,12 @@ fun args_args norm_thm_types unify ctxt env_thmhq ss ts =
 (* logging *)
 
 fun log_unif_result ctxt _ (env, thm) =
-  (@{log} ctxt (K "Environment:");
-  @{log} ctxt (fn _ => pretty_env ctxt env |> Pretty.string_of);
-  @{log} ctxt (K "Theorem:");
-  @{log} ctxt (fn _ => pretty_thm ctxt thm |> Pretty.string_of))
+  @{log} ctxt (fn _ => Pretty.block [
+    Pretty.str "Environment: ",
+    pretty_env ctxt env,
+    Pretty.str "\nTheorem: ",
+    pretty_thm ctxt thm
+  ] |> Pretty.string_of)
 
 fun log_unif_results ctxt tp unify =
   let val res = unify ctxt tp (empty_envir tp) |> Seq.list_of

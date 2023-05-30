@@ -3,9 +3,9 @@ chapter "E-Unification"
 session E_Unification = "Pure" +
   sessions
     Logging
-
   theories
     E_Unification
+    ML_Unification_Resolution
 
 session E_Unification_Tests in "Tests" = "HOL" +
   sessions
