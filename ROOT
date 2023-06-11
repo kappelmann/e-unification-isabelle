@@ -1,22 +1,25 @@
-chapter "E-Unification"
+chapter "ML-Unification"
 
-session E_Unification = "Pure" +
+session ML_Utils in ML_Utils = "Pure" +
+  theories
+    ML_Utils
+
+session ML_Unification = "Pure" +
   sessions
     Logging
+    ML_Utils
   theories
-    E_Unification
+    ML_Unification
     ML_Unification_Resolution
 
-session E_Unification_Tests in "Tests" = "HOL" +
+session ML_Unification_Tests in "Tests" = "HOL" +
   sessions
     SpecCheck
-    E_Unification
-
+    ML_Unification
   directories
     "../Examples"
-
   theories
-    First_Order_Unification_Tests
-    Higher_Order_Pattern_Unification_Tests
-    Higher_Order_Unification_Tests
-    Unification_Hints_Examples
+    First_Order_ML_Unification_Tests
+    Higher_Order_Pattern_ML_Unification_Tests
+    Higher_Order_ML_Unification_Tests
+    ML_Unification_Hints_Examples

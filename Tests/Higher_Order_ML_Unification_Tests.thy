@@ -1,8 +1,8 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
-section \<open>Higher-Order Unification Tests\<close>
-theory Higher_Order_Unification_Tests
-imports
-  Unification_Tests_Base
+section \<open>Higher-Order ML Unification Tests\<close>
+theory Higher_Order_ML_Unification_Tests
+  imports
+    ML_Unification_Tests_Base
 begin
 
 paragraph \<open>Summary\<close>

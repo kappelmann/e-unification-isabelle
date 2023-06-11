@@ -1,9 +1,9 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 section \<open>Unification Test Setup\<close>
-theory Unification_Tests_Base
+theory ML_Unification_Tests_Base
   imports
     Main
-    E_Unification.E_Unification
+    ML_Unification.ML_Unification
     SpecCheck.SpecCheck
 begin
 paragraph \<open>Summary\<close>

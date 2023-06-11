@@ -1,10 +1,10 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 \<^marker>\<open>contributor "Paul Bachmann"\<close>
 section \<open>Examples\<close>
-theory Unification_Hints_Examples
-imports
-  Complex_Main
-  E_Unification.E_Unification
+theory ML_Unification_Hints_Examples
+  imports
+    Complex_Main
+    ML_Unification.ML_Unification
 begin
 paragraph \<open>Summary\<close>
 text \<open>Sample applications of unification hints.\<close>
@@ -74,7 +74,7 @@ fun eval_adv :: "MulExpr \<times> real list \<Rightarrow> real" where
 | "eval_adv (Mul e1 e2, \<Gamma>) = eval_adv (e1, \<Gamma>) * eval_adv (e2, \<Gamma>)"
 | "eval_adv (Inv e, \<Gamma>) = inverse (eval_adv (e, \<Gamma>))"
 
-(*hints for Addexpressions*)
+(*hints for Addexprsions*)
 lemma eval_adv_Unit [unif_hint]: "e \<equiv> Unit \<Longrightarrow> eval_adv (e, \<Gamma>) \<equiv> 1" by simp
 
 lemma eval_adv_Mul [unif_hint]:

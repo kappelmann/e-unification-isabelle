@@ -43,7 +43,7 @@ fun e_match match_types match_theory ctxt (p, t) env =
           let
             val env' = match_types ctxt (Tp, Tt) env
             val name = if np = "" then nt else np
-            val (ctxt', binder as (_, bvar)) = Util.new_binder ctxt name Tt
+            val (binder as (_, bvar), ctxt') = Util.fix_binder (name, Tt) ctxt
           in
             match (binder :: binders) ctxt' (tp, tt) env'
             |> seq_try
@@ -55,14 +55,14 @@ fun e_match match_types match_theory ctxt (p, t) env =
       | (Abs (np, Tp, tp), _) =>
           let
             val Tt = Envir.subst_type tyenv Tp
-            val (ctxt', binder as (_, bvar)) = Util.new_binder ctxt np Tt
+            val (binder as (_, bvar), ctxt') = Util.fix_binder (np, Tt) ctxt
           in
             match (binder :: binders) ctxt' (tp, incr_boundvars 1 t $ Bound 0) env
             |> seq_try
             |> Util.norm_abstract_env_thmq (K I) ctxt' np bvar
           end
       | (_, Abs (nt, Tt, tt)) =>
-          let val (ctxt', binder as (_, bvar)) = Util.new_binder ctxt nt Tt
+          let val (binder as (_, bvar), ctxt') = Util.fix_binder (nt, Tt) ctxt
           in
             match (binder :: binders) ctxt' (incr_boundvars 1 p $ Bound 0, tt) env
             |> seq_try
@@ -163,7 +163,7 @@ fun e_unify unify_types unify_theory ctxt (s, t) env =
           let
             val env' = unify_types ctxt (Ts, Tt) env
             val name = if ns = "" then nt else ns
-            val (ctxt', binder as (_, bvar)) = Util.new_binder ctxt name Ts
+            val (binder as (_, bvar), ctxt') = Util.fix_binder (name, Ts) ctxt
           in
             unif (binder :: binders) ctxt' (ts, tt) env'
             |> seq_try
@@ -171,7 +171,7 @@ fun e_unify unify_types unify_theory ctxt (s, t) env =
           end
       (*eta-expand on the fly*)
       | (Abs (ns, Ts, ts), _) =>
-          let val (ctxt', binder as (_, bvar)) = Util.new_binder ctxt ns Ts
+          let val (binder as (_, bvar), ctxt') = Util.fix_binder (ns, Ts) ctxt
           in
             unif (binder :: binders) ctxt' (ts, incr_boundvars 1 t $ Bound 0) env
             |> seq_try
@@ -263,6 +263,5 @@ fun unify_hints ctxt =
         norm_thm_unif unify hints)
       ctxt
   in unify ctxt end
-
 
 end

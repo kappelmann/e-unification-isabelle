@@ -1,6 +1,6 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
-section \<open>ML E-Unification\<close>
-theory E_Unification
+section \<open>ML Unification\<close>
+theory ML_Unification
   imports
     ML_Unification_Hints
 begin

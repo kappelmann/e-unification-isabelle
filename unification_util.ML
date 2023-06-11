@@ -24,10 +24,6 @@ sig
   val seq_try : exn -> 'a Seq.seq -> 'a Seq.seq
   val seq_is_empty : 'a Seq.seq -> (bool * 'a Seq.seq)
 
-  (* tactics *)
-  val CONCAT : tactic list -> tactic
-  val CONCAT' : (int -> tactic) list -> int -> tactic
-
   (* terms and environments *)
   val maxidx_of_terms : term list -> int
   (*returns empty environment with maxidx set to maximum of given terms*)
@@ -36,20 +32,18 @@ sig
   val fresh_vars : string -> typ list -> int -> term list * int
   val fresh_var : string -> typ -> int -> term * int
 
-  (* binders *)
+  (* binders with De Bruijn indexing *)
   (*During unification, when going underneath an abstraction, we store a binder as
   ((name, typ), fresh Free variable), where the fresh free variable is used as a replacement for the
   corresponding bound variable, for example, when having to create a reflexivity theorem for the
   binder.*)
-  type binder = (string * typ) * term
-  val new_binder : Proof.context -> string -> typ -> Proof.context * binder
+  type 'a binder = (string * typ) * 'a
+  val fix_binders : (string * typ) list -> Proof.context -> (term binder) list * Proof.context
+  val fix_binder : (string * typ) -> Proof.context -> term binder * Proof.context
   (*returns free variable corresponding to the given binder*)
-  val binder_free : binder list -> int -> term
+  val nth_binder_data : 'a binder list -> int -> 'a
   (*replaces all binders by their corresponding free variable in the given term*)
-  val replace_binders : binder list -> term -> term
-
-  (* conversions *)
-  val thm_conv : conv -> thm -> thm
+  val replace_binders : (term binder) list -> term -> term
 
   (* normalisations *)
   type type_normaliser = Type.tyenv -> typ -> typ
@@ -87,7 +81,7 @@ sig
   (* shared standard cases for unifiers *)
   val rigid_rigid : term_type_normaliser -> Unification_Base.type_unifier -> Proof.context -> term ->
     (string * typ) -> Envir.env -> (Envir.env * thm) Seq.seq
-  val bound_bound : Proof.context -> int -> int -> binder list -> thm Seq.seq
+  val bound_bound : Proof.context -> int -> int -> (term binder) list -> thm Seq.seq
   val comb_comb : thm_type_normaliser -> Unification_Base.unifier -> Proof.context ->
     (term * term) -> (term * term) -> Envir.env -> (Envir.env * thm) Seq.seq
   val args_args : thm_type_normaliser -> Unification_Base.unifier -> Proof.context ->
@@ -176,20 +170,20 @@ fun fresh_var name = yield_singleton (fresh_vars name)
 
 
 (* binders *)
-type binder = (string * typ) * term
+type 'a binder = (string * typ) * 'a
 
-fun new_binder ctxt name T =
-  let val (name', ctxt') = yield_singleton Variable.variant_fixes name ctxt
-  in (ctxt', ((name, T), Free (name', T))) end
+fun fix_binders nTs ctxt =
+  let
+    val (ns', ctxt') = Variable.variant_fixes (map fst nTs) ctxt
+    val bs = map2 (fn (n, T) => fn n' => ((n, T), Free (n', T))) nTs ns'
+  in (bs, ctxt') end
+val fix_binder = yield_singleton fix_binders
 
-fun binder_free binders = snd o nth binders
+fun nth_binder_data binders = snd o nth binders
 
 (*replace all Bounds by corresponding Frees*)
 fun replace_binders binders t = let val bvars = map snd binders
   in subst_bounds (bvars, t) end
-
-(* conversions *)
-val thm_conv = Conv.fconv_rule
 
 (* normalisations *)
 type type_normaliser = Type.tyenv -> typ -> typ
@@ -279,7 +273,7 @@ fun norm_thm norm_types norm_terms ctxt (env as Envir.Envir {tyenv,...}) thm =
 
 fun norm_thm_beta_eta norm_types norm_terms ctxt env =
   norm_thm norm_types norm_terms ctxt env
-  #> thm_conv Drule.beta_eta_conversion
+  #> Conversion_Util.thm_conv Drule.beta_eta_conversion
 
 
 (* type unification *)
@@ -290,7 +284,7 @@ fun match_types ctxt (T, U) (env as Envir.Envir {maxidx, tenv, tyenv}) =
     let val tyenv' = Sign.typ_match (Proof_Context.theory_of ctxt) (T, U) tyenv
     in Envir.Envir {maxidx = maxidx, tenv = tenv, tyenv = tyenv'} end)
   handle Type.TYPE_MATCH =>
-    (@{log} ctxt
+    (@{log Logger.DEBUG} ctxt
       (fn _ => Pretty.block [
           Pretty.str "Failed to match types ",
           pretty_types ctxt [norm_type_match tyenv T, U]
@@ -304,7 +298,7 @@ fun unify_types ctxt (T, U) (env as Envir.Envir {maxidx, tenv, tyenv}) =
       Sign.typ_unify (Proof_Context.theory_of ctxt) (T, U) (tyenv, maxidx)
     in Envir.Envir {maxidx = maxidx', tenv = tenv, tyenv = tyenv'} end)
   handle Type.TUNIFY =>
-    (@{log} ctxt
+    (@{log Logger.DEBUG} ctxt
       (fn _ => Pretty.block [
           Pretty.str "Failed to unify types ",
           pretty_types ctxt (map (norm_type_unif tyenv) [T, U])
@@ -327,7 +321,8 @@ fun rigid_rigid norm_term_type unify_types ctxt s (nt, Tt) env =
   end
 
 fun bound_bound ctxt i j binders =
-  if i = j then Seq.single (binder_free binders i |> Unification_Base.reflexive_term ctxt)
+  if i = j
+  then Seq.single (nth_binder_data binders i |> Unification_Base.reflexive_term ctxt)
   else Seq.empty
 
 fun comb_comb norm_thm_types unify ctxt (f, x) (g, y) env =
