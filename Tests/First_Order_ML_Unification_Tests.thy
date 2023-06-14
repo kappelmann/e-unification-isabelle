@@ -5,6 +5,7 @@ theory First_Order_ML_Unification_Tests
   imports
     ML_Unification_Tests_Base
 begin
+
 paragraph \<open>Summary\<close>
 text \<open>Tests for @{ML_structure "First_Order_Unification"}.\<close>
 
@@ -38,7 +39,9 @@ ML_command\<open>
       ("\<lambda> (x :: ?'A) (y :: bool). (?x :: ?'A \<Rightarrow> bool \<Rightarrow> ?'Z) x y", "\<lambda> (x :: nat) (y :: bool). f x y"),
       ("\<lambda>(x :: ?'X). (g :: ?'X \<Rightarrow> ?'X) x", "(g :: ?'X \<Rightarrow> ?'X)"),
       ("?g ?x ?y d", "g ?y ?x d"),
-      ("f 0 True", "(\<lambda>x y. f y x) True 0")
+      ("f 0 True", "(\<lambda>x y. f y x) True 0"),
+      ("\<lambda> (x :: ?'a) y. f y", "\<lambda>(x :: ?'b). f"),
+      ("\<lambda>y z. (?x :: nat \<Rightarrow> bool \<Rightarrow> nat) y z", "f")
     ]
     val check = check_unit_tests_hints_match tests true []
   in
@@ -163,6 +166,7 @@ ML_command\<open>
       ("\<lambda> (x :: nat). (0 :: nat)", "\<lambda> (x :: nat). (0 :: nat)"),
       ("\<lambda> (x :: nat). x", "\<lambda> (x :: nat). x"),
       ("\<lambda> (x :: nat) (y :: bool). (x, y)", "\<lambda> (x :: nat) (y :: bool). (x, y)"),
+      ("\<lambda> (x :: ?'a) y. f y", "\<lambda>(x :: ?'b). f"),
       ("\<lambda> (x :: nat) (y :: bool). f x y", "\<lambda> (x :: nat) (y :: bool). (?x :: nat \<Rightarrow> bool \<Rightarrow> ?'Z) x y")
     ]
     val check = check_unit_tests_hints_unif tests true []

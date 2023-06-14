@@ -61,16 +61,6 @@ end
 structure Tactic_Util : TACTIC_UTIL =
 struct
 
-(* conversions *)
-fun move_prem_to_front_conv 0 = Conv.all_conv
-  | move_prem_to_front_conv i = Conv.implies_concl_conv (move_prem_to_front_conv (i - 1))
-    then_conv Conv.rewr_conv Drule.swap_prems_eq
-
-val move_prems_to_front_conv = sort (rev_order o int_ord)
-  #> map_index (op +)
-  #> map move_prem_to_front_conv
-  #> Conv.every_conv
-
 (* tactic combinators *)
 fun HEADGOAL f = f 1
 
@@ -134,7 +124,7 @@ fun protected_tac n tac ctxt =
   THEN_ALL_NEW unprotect_tac
 
 fun focus_prems_tac is tac ctxt =
-  CONVERSION (move_prems_to_front_conv is)
+  CONVERSION (Conversion_Util.move_prems_to_front_conv is)
   THEN' protect_tac (length is) ctxt
   THEN' FOCUS' (fn {context=ctxt, params=params, prems=prems,
     asms=asms, concl=concl, schematics=schematics} =>

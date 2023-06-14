@@ -5,6 +5,7 @@ theory Higher_Order_Pattern_ML_Unification_Tests
   imports
     ML_Unification_Tests_Base
 begin
+
 paragraph \<open>Summary\<close>
 text \<open>Tests for @{ML_structure "Higher_Order_Pattern_Unification"}.\<close>
 

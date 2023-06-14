@@ -40,6 +40,8 @@ sig
   type 'a binder = (string * typ) * 'a
   val fix_binders : (string * typ) list -> Proof.context -> (term binder) list * Proof.context
   val fix_binder : (string * typ) -> Proof.context -> term binder * Proof.context
+  (*returns types of binders*)
+  val binder_types : 'a binder list -> typ list
   (*returns free variable corresponding to the given binder*)
   val nth_binder_data : 'a binder list -> int -> 'a
   (*replaces all binders by their corresponding free variable in the given term*)
@@ -153,10 +155,6 @@ fun seq_is_empty sq = case Seq.pull sq of
     NONE => (true, Seq.empty)
   | SOME v => (false, Seq.make (fn () => SOME v))
 
-(* tactics *)
-fun CONCAT tacs = fold_rev (curry op APPEND) tacs no_tac
-fun CONCAT' tacs = fold_rev (curry op APPEND') tacs (K no_tac)
-
 (* terms and environments *)
 fun maxidx_of_terms ts = fold (Integer.max o maxidx_of_term) ts ~1
 
@@ -178,6 +176,8 @@ fun fix_binders nTs ctxt =
     val bs = map2 (fn (n, T) => fn n' => ((n, T), Free (n', T))) nTs ns'
   in (bs, ctxt') end
 val fix_binder = yield_singleton fix_binders
+
+fun binder_types binders = map (snd o fst) binders
 
 fun nth_binder_data binders = snd o nth binders
 
@@ -317,7 +317,7 @@ fun rigid_rigid norm_term_type unify_types ctxt s (nt, Tt) env =
         |> Seq.single
       end
     else Seq.empty)
-    handle Unification_Base.UNIF => Seq.empty
+    handle Unification_Base.UNIF => Seq.empty (*types do not match*)
   end
 
 fun bound_bound ctxt i j binders =

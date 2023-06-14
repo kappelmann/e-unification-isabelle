@@ -27,8 +27,10 @@ val logger = Logger.setup_new_logger Unification_Base.logger "First_Order_Unific
 (* shared utils *)
 structure Util = Unification_Util
 
-(*check if sequence is empty or raise UNIF exception*)
-fun seq_try sq = Util.seq_try Unification_Base.UNIF sq
+exception FALLBACK
+
+(*check if sequence is empty or raise FALLBACK exception*)
+fun seq_try sq = Util.seq_try FALLBACK sq
 
 (* first-order E-matching *)
 (*Note: by E-matching we mean "matching modulo equalities" in the general sense,
@@ -39,48 +41,7 @@ fun e_match match_types match_theory ctxt (p, t) env =
     generated theorem is already normalised wrt. the resulting environment*)
     fun match binders ctxt (p, t) (env as Envir.Envir {tenv, tyenv,...}) =
       (case (p, t) of
-        (Abs (np, Tp, tp), Abs (nt, Tt, tt)) =>
-          let
-            val env' = match_types ctxt (Tp, Tt) env
-            val name = if np = "" then nt else np
-            val (binder as (_, bvar), ctxt') = Util.fix_binder (name, Tt) ctxt
-          in
-            match (binder :: binders) ctxt' (tp, tt) env'
-            |> seq_try
-            (*Note: types of binders are already fixed to the object's binder's type
-            ==> we pass the identity type normaliser*)
-            |> Util.norm_abstract_env_thmq (K I) ctxt' name bvar
-          end
-      (*eta-expand on the fly*)
-      | (Abs (np, Tp, tp), _) =>
-          let
-            val Tt = Envir.subst_type tyenv Tp
-            val (binder as (_, bvar), ctxt') = Util.fix_binder (np, Tt) ctxt
-          in
-            match (binder :: binders) ctxt' (tp, incr_boundvars 1 t $ Bound 0) env
-            |> seq_try
-            |> Util.norm_abstract_env_thmq (K I) ctxt' np bvar
-          end
-      | (_, Abs (nt, Tt, tt)) =>
-          let val (binder as (_, bvar), ctxt') = Util.fix_binder (nt, Tt) ctxt
-          in
-            match (binder :: binders) ctxt' (incr_boundvars 1 p $ Bound 0, tt) env
-            |> seq_try
-            |> Util.norm_abstract_env_thmq (K I) ctxt' nt bvar
-          end
-      | (Bound i, Bound j) => Util.bound_bound ctxt i j binders |> seq_try |> Seq.map (pair env)
-      | (Free _, Free g) =>
-          (*normalise the types in rigid-rigid cases*)
-          Util.rigid_rigid (map_types o Util.norm_type_match) match_types ctxt p g env
-          |> seq_try
-      | (Const _, Const d) =>
-          Util.rigid_rigid (map_types o Util.norm_type_match) match_types ctxt p d env
-          |> seq_try
-      | (f $ x, g $ y) =>
-          (*Note: types of recursive theorems are already normalised ==> we have to
-          pass the identity type normaliser*)
-          Util.comb_comb (K o K I) (match binders) ctxt (f, x) (g, y) env |> seq_try
-      | (Var (x, Tx), _) =>
+        (Var (x, Tx), _) =>
           (case Envir.lookup1 tenv (x, Util.norm_type_match tyenv Tx) of
             NONE =>
               if Term.is_open t then
@@ -93,20 +54,74 @@ fun e_match match_types match_theory ctxt (p, t) env =
                 cannot do anything meaningful at this point*)
                 Seq.empty)
               else
-                let val Tt = fastype_of t
+                let val Tt = fastype_of1 (Util.binder_types binders, t)
                 in
-                  (match_types ctxt (Tx, Tt) env,
-                    Unification_Base.reflexive_term ctxt t)
+                  ((match_types ctxt (Tx, Tt) env, Unification_Base.reflexive_term ctxt t)
                   (*insert new substitution x \<mapsto> t*)
                   |>> Envir.update ((x, Tt), t)
-                  |> Seq.single
+                  |> Seq.single)
+                  handle Unification_Base.UNIF => Seq.empty (*types do not match*)
                 end
           | SOME p' =>
             if Envir.aeconv (apply2 Envir.beta_norm (p', t)) then
               Seq.single (env, Unification_Base.reflexive_term ctxt t)
-            else raise Unification_Base.UNIF)
-      | _ => raise Unification_Base.UNIF)
-      handle Unification_Base.UNIF =>
+            else raise FALLBACK)
+      | (Abs (np, Tp, tp), Abs (nt, Tt, tt)) =>
+          ((let
+            val env' = match_types ctxt (Tp, Tt) env
+            val name = if np = "" then nt else np
+            val (binder as (_, bvar), ctxt') = Util.fix_binder (name, Tt) ctxt
+          in
+            match (binder :: binders) ctxt' (tp, tt) env'
+            |> seq_try
+            (*Note: types of binders are already fixed to the object's binder's type
+            ==> we pass the identity type normaliser*)
+            |> Util.norm_abstract_env_thmq (K I) ctxt' name bvar
+          end)
+          handle Unification_Base.UNIF => Seq.empty) (*types do not match*)
+      (*eta-expand on the fly*)
+      | (Abs (np, Tp, tp), _) =>
+          ((let
+            val Ttarg = fastype_of1 (Util.binder_types binders, t) |> Term.dest_funT |> fst
+            val env' = match_types ctxt (Tp, Ttarg) env
+            val (binder as (_, bvar), ctxt') = Util.fix_binder (np, Ttarg) ctxt
+          in
+            match (binder :: binders) ctxt' (tp, incr_boundvars 1 t $ Bound 0) env'
+            |> seq_try
+            |> Util.norm_abstract_env_thmq (K I) ctxt' np bvar
+          end)
+          handle TYPE _ => (@{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
+              Pretty.str "First-order matching failed. Term is not of function type ",
+              Util.pretty_unif ctxt (p, t)
+            ]
+            |> Pretty.string_of);
+            Seq.empty)
+          | Unification_Base.UNIF => Seq.empty) (*types do not match*)
+      | (_, Abs (nt, Tt, tt)) =>
+          ((let
+            val Tp = Envir.fastype env (Util.binder_types binders) p
+            val env' = match_types ctxt (Tp, fastype_of1 (Util.binder_types binders, t)) env
+            val (binder as (_, bvar), ctxt') = Util.fix_binder (nt, Tt) ctxt
+          in
+            match (binder :: binders) ctxt' (incr_boundvars 1 p $ Bound 0, tt) env'
+            |> seq_try
+            |> Util.norm_abstract_env_thmq (K I) ctxt' nt bvar
+          end)
+          handle Unification_Base.UNIF => Seq.empty) (*types do not match*)
+      | (Bound i, Bound j) => Util.bound_bound ctxt i j binders |> Seq.map (pair env)
+      | (Free _, Free g) =>
+          (*normalise the types in rigid-rigid cases*)
+          Util.rigid_rigid (map_types o Util.norm_type_match) match_types ctxt p g env
+          |> seq_try
+      | (Const _, Const d) =>
+          Util.rigid_rigid (map_types o Util.norm_type_match) match_types ctxt p d env
+          |> seq_try
+      | (f $ x, g $ y) =>
+          (*Note: types of recursive theorems are already normalised ==> we have to
+          pass the identity type normaliser*)
+          Util.comb_comb (K o K I) (match binders) ctxt (f, x) (g, y) env |> seq_try
+      | _ => raise FALLBACK)
+      handle FALLBACK =>
         let
           (*replace all Bounds by Frees so that the theory matcher receives a closed term*)
          val (p', t') = apply2 (Util.replace_binders binders) (p, t)
@@ -159,35 +174,7 @@ fun e_unify unify_types unify_theory ctxt (s, t) env =
     (*standard first-order unifier that calls unify_theory on failure*)
     fun unif binders ctxt (s, t) env =
       (case (s, t) of
-        (Abs (ns, Ts, ts), Abs (nt, Tt, tt)) =>
-          let
-            val env' = unify_types ctxt (Ts, Tt) env
-            val name = if ns = "" then nt else ns
-            val (binder as (_, bvar), ctxt') = Util.fix_binder (name, Ts) ctxt
-          in
-            unif (binder :: binders) ctxt' (ts, tt) env'
-            |> seq_try
-            |> Util.norm_abstract_env_thmq (map_types o Util.norm_type_unif) ctxt' name bvar
-          end
-      (*eta-expand on the fly*)
-      | (Abs (ns, Ts, ts), _) =>
-          let val (binder as (_, bvar), ctxt') = Util.fix_binder (ns, Ts) ctxt
-          in
-            unif (binder :: binders) ctxt' (ts, incr_boundvars 1 t $ Bound 0) env
-            |> seq_try
-            |> Util.norm_abstract_env_thmq (map_types o Util.norm_type_unif) ctxt' ns bvar
-          end
-      | (_, Abs _) => unif binders ctxt (t, s) env |> Seq.map (apsnd Unification_Base.symmetric)
-      | (Bound i, Bound j) => Util.bound_bound ctxt i j binders |> seq_try |> Seq.map (pair env)
-      (*we do not have to normalise types in rigid-rigid cases*)
-      | (Free _, Free g) => Util.rigid_rigid (K I) unify_types ctxt s g env |> seq_try
-      | (Const _, Const d) => Util.rigid_rigid (K I) unify_types ctxt s d env |> seq_try
-      (*but we have to normalise types in comb cases*)
-      | (f $ x, g $ y) =>
-          Util.comb_comb (Util.norm_thm_types Util.norm_type_unif) (unif binders) ctxt
-            (f, x) (g, y) env
-          |> seq_try
-      | (Var (x, Tx), _) =>
+        (Var (x, Tx), _) =>
           let val unif' = unif binders ctxt
           in
             (unif' (Envir.norm_term_same env s, t) env
@@ -218,17 +205,51 @@ fun e_unify unify_types unify_theory ctxt (s, t) env =
                           Util.pretty_unif ctxt (s, t)
                         ]
                         |> Pretty.string_of);
-                      raise Unification_Base.UNIF)
+                      raise FALLBACK)
                     else
-                      (unify_types ctxt (Tx, fastype_of t) env,
+                      ((unify_types ctxt (Tx, Envir.fastype env (Util.binder_types binders) t) env,
                         Unification_Base.reflexive_term ctxt s)
                       |>> update_env
-                      |> Seq.single
+                      |> Seq.single)
+                      handle Unification_Base.UNIF => Seq.empty (*types do not unify*)
                   end))
           end
-      | (_, Var _) => unif binders ctxt (t, s) env |> Seq.map (apsnd Unification_Base.symmetric)
-      | _ => raise Unification_Base.UNIF)
-      handle Unification_Base.UNIF =>
+       | (_, Var _) => unif binders ctxt (t, s) env |> Seq.map (apsnd Unification_Base.symmetric)
+       | (Abs (ns, Ts, ts), Abs (nt, Tt, tt)) =>
+          ((let
+            val env' = unify_types ctxt (Ts, Tt) env
+            val name = if ns = "" then nt else ns
+            val (binder as (_, bvar), ctxt') = Util.fix_binder (name, Ts) ctxt
+          in
+            unif (binder :: binders) ctxt' (ts, tt) env'
+            |> seq_try
+            |> Util.norm_abstract_env_thmq (map_types o Util.norm_type_unif) ctxt' name bvar
+          end)
+          handle Unification_Base.UNIF => Seq.empty) (*types do not unify*)
+      (*eta-expand on the fly*)
+      | (Abs (ns, Ts, ts), _) =>
+          ((let
+            val Tp = apply2 (Envir.fastype env (Util.binder_types binders)) (s, t)
+            val env' = unify_types ctxt Tp env
+            val (binder as (_, bvar), ctxt') = Util.fix_binder (ns, Ts) ctxt
+          in
+            unif (binder :: binders) ctxt' (ts, incr_boundvars 1 t $ Bound 0) env'
+            |> seq_try
+            |> Util.norm_abstract_env_thmq (map_types o Util.norm_type_unif) ctxt' ns bvar
+          end)
+          handle Unification_Base.UNIF => Seq.empty) (*types do not unify*)
+      | (_, Abs _) => unif binders ctxt (t, s) env |> Seq.map (apsnd Unification_Base.symmetric)
+      | (Bound i, Bound j) => Util.bound_bound ctxt i j binders |> Seq.map (pair env)
+      (*we do not have to normalise types in rigid-rigid cases*)
+      | (Free _, Free g) => Util.rigid_rigid (K I) unify_types ctxt s g env |> seq_try
+      | (Const _, Const d) => Util.rigid_rigid (K I) unify_types ctxt s d env |> seq_try
+      (*but we have to normalise types in comb cases*)
+      | (f $ x, g $ y) =>
+          Util.comb_comb (Util.norm_thm_types Util.norm_type_unif) (unif binders) ctxt
+            (f, x) (g, y) env
+          |> seq_try
+      | _ => raise FALLBACK)
+      handle FALLBACK =>
         let
           (*replace all Bounds by Frees so that the theory unifier receives a closed term*)
           val (s', t') =
