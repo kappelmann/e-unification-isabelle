@@ -29,6 +29,7 @@ struct
 
 val logger = Logger.setup_new_logger Unification_Base.logger "Unify_Resolve"
 
+structure UBase = Unification_Base
 structure Util = Unification_Util
 
 fun no_lift_biresolve_tac eres brule nsubgoals ctxt =
@@ -61,7 +62,6 @@ fun unify_resolve_tac norm_thm unify rule ctxt =
           |> Pretty.string_of
         )
       val lifted_rule = Thm.lift_rule cgoal rule
-      val _ = @{print} lifted_rule
       val nprems_rule = Thm.nprems_of rule
       fun get_lifted_rule_concl_rparams lifted_rule =
         Logic.strip_prems (nprems_rule, [], Thm.prop_of lifted_rule)
@@ -72,7 +72,7 @@ fun unify_resolve_tac norm_thm unify rule ctxt =
       val conclp = (Thm.term_of cgoal, lifted_rule_concl)
         (*only unify the conclusion of the goal and the rule*)
         |> apply2 (curry Logic.rlist_abs rparams o Logic.strip_assums_concl)
-      val env_thmq = unify ctxt conclp (Envir.empty (Thm.maxidx_of lifted_rule))
+      val env_thmq = unify [] ctxt conclp (Envir.empty (Thm.maxidx_of lifted_rule))
       fun rewrite_tac (env, unif_thm) =
         let
           (*normalise wrt. environment*)
@@ -87,11 +87,11 @@ fun unify_resolve_tac norm_thm unify rule ctxt =
           (**re-introduce the premises to the equality theorem**)
           (*fix fresh Frees*)
           val ctxt = fold Variable.declare_thm [unif_thm, lifted_rule] ctxt
-          val (binders, ctxt') = Util.fix_binders rparams ctxt
+          val (binders, ctxt') = UBase.fix_binders rparams ctxt
           val cfrees = map (Thm.cterm_of ctxt' o snd) binders
           (*premises with Bounds replaced by fresh Frees*)
           val cfree_prems = Logic.strip_assums_hyp lifted_rule_concl
-            |> map (Thm.cterm_of ctxt' o Util.replace_binders binders)
+            |> map (Thm.cterm_of ctxt' o UBase.replace_binders binders)
           fun all_abstract ((x, T), cfree) =
             let val all_const = Logic.all_const T |> Thm.cterm_of ctxt'
             in
@@ -149,7 +149,7 @@ fun no_lift_unify_resolve_tac norm_thm unify rule ctxt =
       val rule_concl = Thm.concl_of rule
       val rule_nprems = Thm.nprems_of rule
       val conclp = (goal_concl, rule_concl)
-      val env_thmq = unify ctxt_focused conclp (Envir.empty (Thm.maxidx_of rule))
+      val env_thmq = unify [] ctxt_focused conclp (Envir.empty (Thm.maxidx_of rule))
       fun update_goal (env, unif_thm) =
         let
           (*normalise all components wrt. env*)

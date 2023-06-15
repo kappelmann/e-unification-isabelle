@@ -3,9 +3,7 @@ sig
   val unit_tests_unifiable : Proof.context -> (term * term) list
 end
 
-functor Higher_Order_Pattern_Unification_Tests(P : sig
-    val unify : Unification_Base.unifier
-  end) : HIGHER_ORDER_PATTERN_UNIFICATION_TESTS =
+structure Higher_Order_Pattern_Unification_Tests : HIGHER_ORDER_PATTERN_UNIFICATION_TESTS =
 struct
 
 fun unit_tests_unifiable ctxt =

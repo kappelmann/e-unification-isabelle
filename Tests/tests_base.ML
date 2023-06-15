@@ -13,20 +13,20 @@ sig
     int -> int -> (term * term) SpecCheck_Generator.gen
 
   val thms_correct : (Envir.env -> (term * term) -> (term * term)) ->
-    Unification_Util.thm_normaliser -> Proof.context -> Unification_Base.unifier ->
+    Unification_Util.thm_normaliser -> Proof.context -> Unification_Base.closed_unifier ->
     (term * term) SpecCheck_Property.pred
 
-  val terms_unify : Proof.context -> Unification_Base.unifier ->
+  val terms_unify : Proof.context -> Unification_Base.closed_unifier ->
     (term * term) SpecCheck_Property.pred
 
   val terms_unify_thms_correct : (Envir.env -> (term * term) -> (term * term)) ->
-    Unification_Util.thm_normaliser -> Proof.context -> Unification_Base.unifier ->
+    Unification_Util.thm_normaliser -> Proof.context -> Unification_Base.closed_unifier ->
     (term * term) SpecCheck_Property.pred
 
-  val terms_unify_thms_correct_unif : Proof.context -> Unification_Base.unifier ->
+  val terms_unify_thms_correct_unif : Proof.context -> Unification_Base.closed_unifier ->
     (term * term) SpecCheck_Property.pred
 
-  val terms_unify_thms_correct_match : Proof.context -> Unification_Base.unifier ->
+  val terms_unify_thms_correct_match : Proof.context -> Unification_Base.closed_unifier ->
     (term * term) SpecCheck_Property.pred
 
   val add_hints : thm list -> Proof.context -> Proof.context
@@ -37,13 +37,13 @@ sig
 
   val check_thm : (Envir.env -> (term * term) -> (term * term)) -> Unification_Util.thm_normaliser ->
     (term * term, 'a) SpecCheck_Generator.gen_state -> string ->
-    Unification_Base.unifier -> (Proof.context, 'a) Lecker.test_state
+    Unification_Base.closed_unifier -> (Proof.context, 'a) Lecker.test_state
 
   val check_thm_unif : (term * term, 'a) SpecCheck_Generator.gen_state -> string ->
-    Unification_Base.unifier -> (Proof.context, 'a) Lecker.test_state
+    Unification_Base.closed_unifier -> (Proof.context, 'a) Lecker.test_state
 
   val check_thm_match : (term * term, 'a) SpecCheck_Generator.gen_state -> string ->
-    Unification_Base.unifier -> (Proof.context, 'a) Lecker.test_state
+    Unification_Base.closed_unifier -> (Proof.context, 'a) Lecker.test_state
 
   val check_list : (term * term) list -> string ->
     (term * term) SpecCheck_Property.prop -> Proof.context ->
@@ -51,13 +51,13 @@ sig
 
   val check_unit_tests_hints : (Envir.env -> (term * term) -> (term * term)) ->
     Unification_Util.thm_normaliser -> (term * term) list -> bool -> thm list -> string ->
-    Unification_Base.unifier -> (Proof.context, 'a) Lecker.test_state
+    Unification_Base.closed_unifier -> (Proof.context, 'a) Lecker.test_state
 
   val check_unit_tests_hints_unif : (term * term) list -> bool -> thm list -> string ->
-    Unification_Base.unifier -> (Proof.context, 'a) Lecker.test_state
+    Unification_Base.closed_unifier -> (Proof.context, 'a) Lecker.test_state
 
   val check_unit_tests_hints_match : (term * term) list -> bool -> thm list -> string ->
-    Unification_Base.unifier -> (Proof.context, 'a) Lecker.test_state
+    Unification_Base.closed_unifier -> (Proof.context, 'a) Lecker.test_state
 
 
 end

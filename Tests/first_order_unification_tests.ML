@@ -24,8 +24,8 @@ sig
 end
 
 functor First_Order_Unification_Tests(P : sig
-    val unify : Unification_Base.unifier
-    val unify_hints : Unification_Base.unifier
+    val unify : Unification_Base.closed_unifier
+    val unify_hints : Unification_Base.closed_unifier
     val params : {
       nv : int,
       ni : int,

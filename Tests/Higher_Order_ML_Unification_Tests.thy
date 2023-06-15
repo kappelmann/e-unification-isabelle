@@ -23,10 +23,10 @@ paragraph \<open>First Order\<close>
 ML_command\<open>
   structure Test_Params =
   struct
-    open Unif
+    val unify = unify
     (*Note: there is no higher-order unification with hints as of now;
       we hence use the higher-order pattern hints unifier for those tests*)
-    val unify_hints = Higher_Order_Pattern_Unification.unify_hints
+    val unify_hints = Higher_Order_Pattern_Unification.unify_hints []
     val params = {
       nv = 10,
       ni = 10,
@@ -40,12 +40,13 @@ ML_command\<open>
 
 paragraph \<open>Higher Order\<close>
 
+subsubsection \<open>Higher-Order Patterns\<close>
+
 ML_file\<open>higher_order_pattern_unification_tests.ML\<close>
 
 ML_command\<open>
-  structure Tests = Higher_Order_Pattern_Unification_Tests(Unif)
-  val ctxt = Proof_Context.set_mode Proof_Context.mode_schematic @{context}
-  val tests = Tests.unit_tests_unifiable ctxt
+  val ctxt = @{context}
+  val tests = Higher_Order_Pattern_Unification_Tests.unit_tests_unifiable ctxt
   val check_hints = check_unit_tests_hints_unif tests
   val _ = Lecker.test_group ctxt () [
       check_hints true [] "unify" unify

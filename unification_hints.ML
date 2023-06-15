@@ -61,15 +61,16 @@ fun incr_indexes_prems n =
   Normalises the theorems after unify with norm_thm_unif.
   Returns a sequence of (env, thm) pairs.
   Precondition: t1, t2 are normalised wrt the passed environment*)
-fun try_hint try_symmetric match norm_thm_unif unify ctxt (t1, t2)
+fun try_hint try_symmetric match norm_thm_unif unify binders ctxt (t1, t2)
   (Envir.Envir {maxidx, tenv, tyenv})
   (hint as ((P_raw, Q_raw), hint_prems_raw, hint_thm_raw)) =
   let
+    (*TODO: do not replace but lift meta variables instead*)
+    val (t1, t2) = apply2 (Unification_Base.replace_binders binders) (t1, t2)
     val _ = @{log Logger.TRACE} ctxt (fn _ =>
         Pretty.block [Pretty.str "Trying hint: ", pretty_hint ctxt hint]
         |> Pretty.string_of
       )
-
     (*increase indices to avoid naming conflicts*)
     val (P, Q) = apply2 (incr_idx (maxidx + 1)) (P_raw, Q_raw)
     val hint_prems = incr_indexes_prems (maxidx + 1) hint_prems_raw
@@ -80,7 +81,7 @@ fun try_hint try_symmetric match norm_thm_unif unify ctxt (t1, t2)
     (*match hint with unification pair, set flipped flag if symmetric hint matches*)
     val (no_hint_match, match_env_concl_thmpq) =
       let
-        val match' = match ctxt
+        val match' = match binders ctxt
         fun match_hint tl tr =
           match' (P, tl) env'
           |> Seq.maps (fn (env'', thmL) => match' (Q, tr) env'' |> Seq.map (apsnd (pair thmL)))
@@ -103,7 +104,8 @@ fun try_hint try_symmetric match norm_thm_unif unify ctxt (t1, t2)
 
         (*unify each hint premise and collect the theorems while iteratively extending the environment*)
         fun unif_prem (v, s) = Seq.maps
-          (fn (env, thms) => unify ctxt (Var v, s) env |> Seq.map (apsnd (fn thm => thm :: thms)))
+          (fn (env, thms) => unify binders ctxt (Var v, s) env
+            |> Seq.map (apsnd (fn thm => thm :: thms)))
         fun unify_prems ((match_env, concl_thmp), flipped) =
           fold unif_prem hint_prems (Seq.single (match_env, []))
           |> Seq.map (rpair (concl_thmp, flipped))
@@ -128,7 +130,7 @@ fun try_hint try_symmetric match norm_thm_unif unify ctxt (t1, t2)
   end
 
 (*try to apply every hint from the hint list*)
-fun try_hints match norm_thm_unif unif hints ctxt (t1, t2) env =
+fun try_hints match norm_thm_unif unif hints binders ctxt (t1, t2) env =
   let val try_symmetric = Config.get ctxt try_symmetric
   in
     (@{log Logger.DEBUG} ctxt (fn _ =>
@@ -136,7 +138,7 @@ fun try_hints match norm_thm_unif unif hints ctxt (t1, t2) env =
         Util.pretty_unif ctxt (t1, t2)]
       |> Pretty.string_of);
     Seq.of_list hints
-    |> Seq.maps (try_hint try_symmetric match norm_thm_unif unif ctxt (t1, t2) env))
+    |> Seq.maps (try_hint try_symmetric match norm_thm_unif unif binders ctxt (t1, t2) env))
   end
 
 (*TODO: index hints in proper term index (cf. simplifier)*)

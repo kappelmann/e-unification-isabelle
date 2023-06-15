@@ -13,10 +13,10 @@ ML\<open>
   structure Prop = SpecCheck_Property
   open Unification_Tests_Base
   structure Unif = First_Order_Unification
-  val match_hints = Unif.match_hints
-  val match = Unif.match
-  val unify_hints = Unif.unify_hints
-  val unify = Unif.unify
+  val match_hints = Unif.match_hints []
+  val match = Unif.match []
+  val unify_hints = Unif.unify_hints []
+  val unify = Unif.unify []
 \<close>
 
 subsection \<open>Matching\<close>
@@ -97,7 +97,8 @@ subsubsection \<open>Generated Tests\<close>
 ML_command\<open>
   structure Test_Params =
   struct
-    open Unif
+    val unify = unify
+    val unify_hints = unify_hints
     val params = {
       nv = 4,
       ni = 2,

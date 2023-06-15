@@ -8,7 +8,7 @@ signature HIGHER_ORDER_UNIFICATION =
 sig
   include HAS_LOGGER
 
-  val unify : Unification_Base.unifier
+  val unify : Unification_Base.closed_unifier
 end
 
 structure Higher_Order_Unification : HIGHER_ORDER_UNIFICATION =
