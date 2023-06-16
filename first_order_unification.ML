@@ -27,6 +27,7 @@ val logger = Logger.setup_new_logger Unification_Base.logger "First_Order_Unific
 (* shared utils *)
 structure UBase = Unification_Base
 structure Util = Unification_Util
+structure Norm = Normalisation
 
 exception FALLBACK
 
@@ -43,7 +44,7 @@ fun e_match match_types match_theory binders ctxt (p, t) env =
     fun match binders ctxt (p, t) (env as Envir.Envir {tenv, tyenv,...}) =
       (case (p, t) of
         (Var (x, Tx), _) =>
-          (case Envir.lookup1 tenv (x, Util.norm_type_match tyenv Tx) of
+          (case Envir.lookup1 tenv (x, Norm.norm_type_match tyenv Tx) of
             NONE =>
               if Term.is_open t then
                 (@{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
@@ -53,7 +54,7 @@ fun e_match match_types match_theory binders ctxt (p, t) env =
                   |> Pretty.string_of);
                 (*directly return empty sequence because the theory unifier
                 cannot do anything meaningful at this point*)
-                Seq.empty)
+                raise FALLBACK)
               else
                 let val Tt = fastype_of1 (UBase.binder_types binders, t)
                 in
@@ -68,28 +69,21 @@ fun e_match match_types match_theory binders ctxt (p, t) env =
               Seq.single (env, Unification_Base.reflexive_term ctxt t)
             else raise FALLBACK)
       | (Abs (np, Tp, tp), Abs (nt, Tt, tt)) =>
-          ((let
-            val env' = match_types ctxt (Tp, Tt) env
-            val name = if np = "" then nt else np
-            val (binder as (_, bvar), ctxt') = UBase.fix_binder (name, Tt) ctxt
+          ((let val name = if np = "" then nt else np
           in
-            match (binder :: binders) ctxt' (tp, tt) env'
+            match_types ctxt (Tp, Tt) env
+            |> Util.abstract_abstract (K I) match ctxt binders name Tt (tp, tt)
             |> seq_try
-            (*Note: types of binders are already fixed to the object's binder's type
-            ==> we pass the identity type normaliser*)
-            |> Util.norm_abstract_env_thmq (K I) ctxt' name bvar
           end)
           handle Unification_Base.UNIF => Seq.empty) (*types do not match*)
       (*eta-expand on the fly*)
       | (Abs (np, Tp, tp), _) =>
-          ((let
-            val Ttarg = fastype_of1 (UBase.binder_types binders, t) |> Term.dest_funT |> fst
-            val env' = match_types ctxt (Tp, Ttarg) env
-            val (binder as (_, bvar), ctxt') = UBase.fix_binder (np, Ttarg) ctxt
+          ((let val Ttarg = fastype_of1 (UBase.binder_types binders, t) |> Term.dest_funT |> fst
           in
-            match (binder :: binders) ctxt' (tp, incr_boundvars 1 t $ Bound 0) env'
+            match_types ctxt (Tp, Ttarg) env
+            |> Util.abstract_abstract (K I) match ctxt binders np Ttarg
+                (tp, incr_boundvars 1 t $ Bound 0)
             |> seq_try
-            |> Util.norm_abstract_env_thmq (K I) ctxt' np bvar
           end)
           handle TYPE _ => (@{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
               Pretty.str "First-order matching failed. Term is not of function type ",
@@ -99,23 +93,21 @@ fun e_match match_types match_theory binders ctxt (p, t) env =
             Seq.empty)
           | Unification_Base.UNIF => Seq.empty) (*types do not match*)
       | (_, Abs (nt, Tt, tt)) =>
-          ((let
-            val Tp = Envir.fastype env (UBase.binder_types binders) p
-            val env' = match_types ctxt (Tp, fastype_of1 (UBase.binder_types binders, t)) env
-            val (binder as (_, bvar), ctxt') = UBase.fix_binder (nt, Tt) ctxt
+          ((let val Tp = Envir.fastype env (UBase.binder_types binders) p
           in
-            match (binder :: binders) ctxt' (incr_boundvars 1 p $ Bound 0, tt) env'
+            match_types ctxt (Tp, fastype_of1 (UBase.binder_types binders, t)) env
+            |> Util.abstract_abstract (K I) match ctxt binders nt Tt
+                (incr_boundvars 1 p $ Bound 0, tt)
             |> seq_try
-            |> Util.norm_abstract_env_thmq (K I) ctxt' nt bvar
           end)
           handle Unification_Base.UNIF => Seq.empty) (*types do not match*)
       | (Bound i, Bound j) => Util.bound_bound ctxt i j binders |> Seq.map (pair env)
       | (Free _, Free g) =>
           (*normalise the types in rigid-rigid cases*)
-          Util.rigid_rigid (map_types o Util.norm_type_match) match_types ctxt p g env
+          Util.rigid_rigid Norm.norm_term_types_match match_types ctxt p g env
           |> seq_try
       | (Const _, Const d) =>
-          Util.rigid_rigid (map_types o Util.norm_type_match) match_types ctxt p d env
+          Util.rigid_rigid Norm.norm_term_types_match match_types ctxt p d env
           |> seq_try
       | (f $ x, g $ y) =>
           (*Note: types of recursive theorems are already normalised ==> we have to
@@ -124,7 +116,7 @@ fun e_match match_types match_theory binders ctxt (p, t) env =
       | _ => raise FALLBACK)
       handle FALLBACK =>
         let
-          val pt = (Util.norm_term_match env p, t)
+          val pt = (Norm.beta_norm_term_match env p, t)
           val _ = @{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
               Pretty.str "First-order matching failed. Calling theory matcher for ",
               Util.pretty_unif ctxt pt
@@ -135,7 +127,7 @@ fun e_match match_types match_theory binders ctxt (p, t) env =
     (@{log Logger.DEBUG} ctxt (fn _ =>
       Pretty.block [
         Pretty.str "First-order matching ",
-        Util.pretty_unif ctxt (Util.norm_term_match env p, t)
+        Util.pretty_unif ctxt (Norm.norm_term_match env p, t)
       ]
       |> Pretty.string_of);
     match binders ctxt (p, t) env)
@@ -150,13 +142,20 @@ fun match_hints binders ctxt =
     (*we do not flip the hints since they may indicate on which side of the
       equation variables may be instantiated*)
     val ctxt' = Config.put Unification_Hints.try_symmetric false ctxt
-    val hints = Unification_Hints.gen_hint_list ctxt
+    val hints = Unification_Hints.get_hints ctxt
     (*match already normalises the types*)
-    val norm_thm_unif = Util.norm_thm_beta_eta (K I) Util.norm_term_match
-    fun match binders ctxt = e_match Util.match_types
-      (Unification_Hints.try_hints Higher_Order_Pattern_Unification.match
-        norm_thm_unif match hints)
-      binders ctxt
+    val norm_term_match = Norm.norm_term_match
+    val norm_thm_match = Norm.beta_eta_norm_thm (K I) norm_term_match
+    fun match binders ctxt =
+      let fun match_hint_prems binders ctxt (p, t) env =
+        (*normalise wrt. new environment from hint application*)
+        match binders ctxt (Norm.beta_norm_term_match env p, t) env
+      in
+        e_match Util.match_types
+          (Unification_Hints.try_hints Higher_Order_Pattern_Unification.match
+            norm_term_match norm_thm_match match_hint_prems hints)
+          binders ctxt
+      end
   in match binders ctxt' end
 
 (* first-order E-unification *)
@@ -185,9 +184,7 @@ fun e_unify unify_types unify_theory binders ctxt (s, t) env =
                       Util.pretty_unif ctxt (s, t)
                     ]
                     |> Pretty.string_of);
-                  (*directly return empty sequence because the theory unifier
-                  cannot do anything meaningful at this point*)
-                  Seq.empty)
+                  raise FALLBACK)
                 else
                   let
                     val vars_eq = is_Var t andalso x = fst (dest_Var t)
@@ -214,26 +211,21 @@ fun e_unify unify_types unify_theory binders ctxt (s, t) env =
           end
        | (_, Var _) => unif binders ctxt (t, s) env |> Seq.map (apsnd Unification_Base.symmetric)
        | (Abs (ns, Ts, ts), Abs (nt, Tt, tt)) =>
-          ((let
-            val env' = unify_types ctxt (Ts, Tt) env
-            val name = if ns = "" then nt else ns
-            val (binder as (_, bvar), ctxt') = UBase.fix_binder (name, Ts) ctxt
+          ((let val name = if ns = "" then nt else ns
           in
-            unif (binder :: binders) ctxt' (ts, tt) env'
+            unify_types ctxt (Ts, Tt) env
+            |> Util.abstract_abstract Norm.norm_term_types_unif unif ctxt binders name Ts (ts, tt)
             |> seq_try
-            |> Util.norm_abstract_env_thmq (map_types o Util.norm_type_unif) ctxt' name bvar
           end)
           handle Unification_Base.UNIF => Seq.empty) (*types do not unify*)
       (*eta-expand on the fly*)
       | (Abs (ns, Ts, ts), _) =>
-          ((let
-            val Tp = apply2 (Envir.fastype env (UBase.binder_types binders)) (s, t)
-            val env' = unify_types ctxt Tp env
-            val (binder as (_, bvar), ctxt') = UBase.fix_binder (ns, Ts) ctxt
+          ((let val Tp = apply2 (Envir.fastype env (UBase.binder_types binders)) (s, t)
           in
-            unif (binder :: binders) ctxt' (ts, incr_boundvars 1 t $ Bound 0) env'
+            unify_types ctxt Tp env
+            |> Util.abstract_abstract Norm.norm_term_types_unif unif ctxt binders ns Ts
+              (ts, incr_boundvars 1 t $ Bound 0)
             |> seq_try
-            |> Util.norm_abstract_env_thmq (map_types o Util.norm_type_unif) ctxt' ns bvar
           end)
           handle Unification_Base.UNIF => Seq.empty) (*types do not unify*)
       | (_, Abs _) => unif binders ctxt (t, s) env |> Seq.map (apsnd Unification_Base.symmetric)
@@ -243,13 +235,12 @@ fun e_unify unify_types unify_theory binders ctxt (s, t) env =
       | (Const _, Const d) => Util.rigid_rigid (K I) unify_types ctxt s d env |> seq_try
       (*but we have to normalise types in comb cases*)
       | (f $ x, g $ y) =>
-          Util.comb_comb (Util.norm_thm_types Util.norm_type_unif) (unif binders) ctxt
-            (f, x) (g, y) env
+          Util.comb_comb Norm.norm_thm_types_unif (unif binders) ctxt (f, x) (g, y) env
           |> seq_try
       | _ => raise FALLBACK)
       handle FALLBACK =>
         let
-          val tp = apply2 (Util.norm_term_unif env) (s, t)
+          val tp = apply2 (Norm.beta_norm_term_unif env) (s, t)
           val _ = @{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
               Pretty.str "First-order unification failed. Calling theory unifier for ",
               Util.pretty_unif ctxt tp
@@ -260,7 +251,7 @@ fun e_unify unify_types unify_theory binders ctxt (s, t) env =
     (@{log Logger.DEBUG} ctxt (fn _ =>
       Pretty.block [
         Pretty.str "First-order unifying ",
-        Util.pretty_unif ctxt (apply2 (Util.norm_term_unif env) (s, t))
+        Util.pretty_unif ctxt (apply2 (Norm.norm_term_unif env) (s, t))
       ]
       |> Pretty.string_of);
     unif binders ctxt (s, t) env)
@@ -272,12 +263,19 @@ val unify = e_unify Util.unify_types (K o K o K o K Seq.empty)
 (*first-order unification with hints*)
 fun unify_hints binders ctxt =
   let
-    val hints = Unification_Hints.gen_hint_list ctxt
-    val norm_thm_unif =
-      Util.norm_thm_beta_eta Util.norm_type_unif Util.norm_term_unif
-    fun unify binders ctxt = e_unify Util.unify_types
-      (Unification_Hints.try_hints Higher_Order_Pattern_Unification.match norm_thm_unif unify hints)
-      binders ctxt
+    val hints = Unification_Hints.get_hints ctxt
+    val norm_term_unif = Norm.norm_term_unif
+    val norm_thm_unif = Norm.beta_eta_norm_thm Norm.norm_type_unif norm_term_unif
+    fun unify binders ctxt =
+      let fun unify_hint_prems binders ctxt tp env =
+        (*normalise wrt. new environment from hint application*)
+        unify binders ctxt (apply2 (Norm.beta_norm_term_unif env) tp) env
+      in
+        e_unify Util.unify_types
+          (Unification_Hints.try_hints Higher_Order_Pattern_Unification.match
+            norm_term_unif norm_thm_unif unify_hint_prems hints)
+          binders ctxt
+      end
   in unify binders ctxt end
 
 end

@@ -20,13 +20,12 @@ structure Util = Unification_Util
 
 fun unify ctxt tp env =
   let
-    fun unif () =
-      (let
-        val env = Util.unify_types ctxt (apply2 Term.fastype_of tp) env
+    fun unif env =
+      let
         val init_goal = Logic.mk_equals #> Thm.cterm_of ctxt #> Goal.init
         fun create_env_thmq env =
           (*apply the computed unifier*)
-          apply2 (Util.norm_term_unif env) tp
+          apply2 (Normalisation.beta_norm_term_unif env) tp
           (*create a goal such that we can create a theorem including the
             flex-flex pairs*)
           |> init_goal
@@ -40,24 +39,16 @@ fun unify ctxt tp env =
         Unify.hounifiers (Context.Proof ctxt, env, [tp])
         (*add the flex-flex pairs to the theorem to fit the unifier signature*)
         |> Seq.maps (create_env_thmq o fst)
-      end)
-      handle Unification_Base.UNIF =>
-        let
-          val tp' = apply2 (Util.norm_term_unif env) tp
-          val _ = @{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
-              Pretty.str "Higher-order unification failed (type mismatch) ",
-              Util.pretty_unif ctxt tp'
-            ]
-            |> Pretty.string_of)
-        in Seq.empty end
+      end
   in
-    (@{log Logger.DEBUG} ctxt (fn _ =>
+    ((@{log Logger.DEBUG} ctxt (fn _ =>
       Pretty.block [
         Pretty.str "Higher-order unifying ",
         Util.pretty_unif ctxt (apply2 (Envir.norm_term env) tp)
       ]
       |> Pretty.string_of);
-    unif ())
+    unif (Util.unify_types ctxt (apply2 Term.fastype_of tp) env))
+    handle Unification_Base.UNIF => Seq.empty) (*types do not match*)
   end
 
 end

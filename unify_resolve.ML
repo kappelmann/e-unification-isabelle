@@ -11,14 +11,14 @@ sig
   val no_lift_resolve_tac : thm -> int -> Proof.context -> int -> tactic
   val no_lift_eresolve_tac : thm -> int -> Proof.context -> int -> tactic
 
-  val unify_resolve_tac : Unification_Util.thm_normaliser ->
+  val unify_resolve_tac : Normalisation.thm_normaliser ->
     Unification_Base.unifier -> thm -> Proof.context -> int -> tactic
-  val unify_resolves_tac : Unification_Util.thm_normaliser ->
+  val unify_resolves_tac : Normalisation.thm_normaliser ->
     Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
-  val any_unify_resolve_tac : Unification_Util.thm_normaliser ->
+  val any_unify_resolve_tac : Normalisation.thm_normaliser ->
     Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
 
-  val no_lift_any_unify_resolve_tac : Unification_Util.thm_normaliser ->
+  val no_lift_any_unify_resolve_tac : Normalisation.thm_normaliser ->
     Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
 
 
@@ -69,48 +69,44 @@ fun unify_resolve_tac norm_thm unify rule ctxt =
         |> (`) Logic.strip_params
         |> apfst rev
       val (rparams, lifted_rule_concl) = get_lifted_rule_concl_rparams lifted_rule
-      val conclp = (Thm.term_of cgoal, lifted_rule_concl)
-        (*only unify the conclusion of the goal and the rule*)
-        |> apply2 (curry Logic.rlist_abs rparams o Logic.strip_assums_concl)
-      val env_thmq = unify [] ctxt conclp (Envir.empty (Thm.maxidx_of lifted_rule))
+      val (binders, ctxt) = UBase.fix_binders rparams ctxt
+      val conclp = (*only unify the conclusion of the goal and the rule*)
+        apply2 Logic.strip_assums_concl (Thm.term_of cgoal, lifted_rule_concl)
+      val env_thmq = unify binders ctxt conclp (Envir.empty (Thm.maxidx_of lifted_rule))
       fun rewrite_tac (env, unif_thm) =
         let
           (*normalise wrt. environment*)
-          val norm_thm_env = norm_thm ctxt env
-          val unif_thm = norm_thm_env unif_thm
-          val lifted_rule = norm_thm_env lifted_rule
+          val norm_thm = norm_thm ctxt env
+          val unif_thm = norm_thm unif_thm
+          val lifted_rule = norm_thm lifted_rule
           val (rparams, lifted_rule_concl) = get_lifted_rule_concl_rparams lifted_rule
           val _ = @{log Logger.TRACE} ctxt (fn _ => Pretty.block [
               Pretty.str "Lifting unification theorem ",
               Util.pretty_thm ctxt unif_thm
             ] |> Pretty.string_of)
-          (**re-introduce the premises to the equality theorem**)
-          (*fix fresh Frees*)
-          val ctxt = fold Variable.declare_thm [unif_thm, lifted_rule] ctxt
-          val (binders, ctxt') = UBase.fix_binders rparams ctxt
-          val cfrees = map (Thm.cterm_of ctxt' o snd) binders
-          (*premises with Bounds replaced by fresh Frees*)
+          (*update types and certify fresh Frees of binders*)
+          val cbinders = map2
+            (fn (_, T) => apsnd (fn Free (n, _) => Thm.cterm_of ctxt (Free (n, T))))
+            rparams binders
+          (*certified premises with Bounds replaced by fresh Frees*)
           val cfree_prems = Logic.strip_assums_hyp lifted_rule_concl
-            |> map (Thm.cterm_of ctxt' o UBase.replace_binders binders)
+            |> map (Thm.cterm_of ctxt o UBase.replace_binders binders)
           fun all_abstract ((x, T), cfree) =
-            let val all_const = Logic.all_const T |> Thm.cterm_of ctxt'
+            let val all_const = Logic.all_const T |> Thm.cterm_of ctxt
             in
               Unification_Base.abstract_rule x cfree
               #> Drule.arg_cong_rule all_const
             end
-          val unif_thm =
-            (*replace Bounds with fresh Frees*)
-            fold_rev (fn free => fn thm => Drule.fun_cong_rule thm free) cfrees unif_thm
-            (*introduce the premises*)
-            |> fold_rev (Drule.imp_cong_rule o Thm.reflexive) cfree_prems
-            (*re-introduce abstractions for the introduced fresh Frees*)
-            |> fold all_abstract (rparams ~~ cfrees)
+          val unif_thm = (*introduce the premises*)
+            fold_rev (Drule.imp_cong_rule o Thm.reflexive) cfree_prems unif_thm
+            (*introduce abstractions for the fresh Frees*)
+            |> fold all_abstract cbinders
           val _ = @{log Logger.TRACE} ctxt (fn _ => Pretty.block [
               Pretty.str "Lifted unification theorem ",
               Util.pretty_thm ctxt unif_thm
             ] |> Pretty.string_of)
         in
-          (PRIMITIVE norm_thm_env |> K)
+          (PRIMITIVE norm_thm |> K)
           THEN' rewrite_subgoal_tac unif_thm ctxt
           THEN' no_lift_resolve_tac lifted_rule nprems_rule ctxt
         end

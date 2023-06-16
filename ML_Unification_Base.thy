@@ -7,6 +7,7 @@ theory ML_Unification_Base
 begin
 
 ML_file\<open>unification_base.ML\<close>
+ML_file\<open>normalisation.ML\<close>
 ML_file\<open>unification_util.ML\<close>
 
 end

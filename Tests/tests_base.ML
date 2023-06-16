@@ -13,14 +13,14 @@ sig
     int -> int -> (term * term) SpecCheck_Generator.gen
 
   val thms_correct : (Envir.env -> (term * term) -> (term * term)) ->
-    Unification_Util.thm_normaliser -> Proof.context -> Unification_Base.closed_unifier ->
+    Normalisation.thm_normaliser -> Proof.context -> Unification_Base.closed_unifier ->
     (term * term) SpecCheck_Property.pred
 
   val terms_unify : Proof.context -> Unification_Base.closed_unifier ->
     (term * term) SpecCheck_Property.pred
 
   val terms_unify_thms_correct : (Envir.env -> (term * term) -> (term * term)) ->
-    Unification_Util.thm_normaliser -> Proof.context -> Unification_Base.closed_unifier ->
+    Normalisation.thm_normaliser -> Proof.context -> Unification_Base.closed_unifier ->
     (term * term) SpecCheck_Property.pred
 
   val terms_unify_thms_correct_unif : Proof.context -> Unification_Base.closed_unifier ->
@@ -35,7 +35,7 @@ sig
     (term * term) SpecCheck_Property.prop ->
     (Proof.context, 'a) Lecker.test_state
 
-  val check_thm : (Envir.env -> (term * term) -> (term * term)) -> Unification_Util.thm_normaliser ->
+  val check_thm : (Envir.env -> (term * term) -> (term * term)) -> Normalisation.thm_normaliser ->
     (term * term, 'a) SpecCheck_Generator.gen_state -> string ->
     Unification_Base.closed_unifier -> (Proof.context, 'a) Lecker.test_state
 
@@ -50,7 +50,7 @@ sig
     (term * term) Seq.seq
 
   val check_unit_tests_hints : (Envir.env -> (term * term) -> (term * term)) ->
-    Unification_Util.thm_normaliser -> (term * term) list -> bool -> thm list -> string ->
+    Normalisation.thm_normaliser -> (term * term) list -> bool -> thm list -> string ->
     Unification_Base.closed_unifier -> (Proof.context, 'a) Lecker.test_state
 
   val check_unit_tests_hints_unif : (term * term) list -> bool -> thm list -> string ->
@@ -67,6 +67,7 @@ struct
 
 structure Gen = SpecCheck_Generator
 structure UUtil = Unification_Util
+structure Norm = Normalisation
 
 fun term_num_args_gen nv ni weights num_args_gen h i =
   Gen.zip (Gen.aterm' (Gen.nonneg nv) (Gen.nonneg ni) weights) (num_args_gen h i)
@@ -126,13 +127,13 @@ fun terms_unify_thms_correct norm_terms norm_thm ctxt unif tp =
   terms_unify ctxt unif tp andalso thms_correct norm_terms norm_thm ctxt unif tp
 
 val terms_unify_thms_correct_unif = terms_unify_thms_correct
-  (apply2 o UUtil.norm_term_unif)
-  (UUtil.norm_thm_beta_eta UUtil.norm_type_unif UUtil.norm_term_unif)
+  (apply2 o Norm.beta_norm_term_unif)
+  (Norm.beta_eta_norm_thm Norm.norm_type_unif Norm.beta_norm_term_unif)
 
 val terms_unify_thms_correct_match = terms_unify_thms_correct
-  (apfst o UUtil.norm_term_match)
+  (apfst o Norm.beta_norm_term_match)
   (*types are already normalised by matcher*)
-  (UUtil.norm_thm_beta_eta (K I) UUtil.norm_term_match)
+  (Norm.beta_eta_norm_thm (K I) Norm.beta_norm_term_match)
 
 fun check gen name prop ctxt =
   SpecCheck.check_shrink (show_termpair ctxt) shrink_termpair
@@ -143,13 +144,13 @@ fun check_thm norm_terms norm_thm gen name unif ctxt = check gen ("Theorem corre
   ctxt
 
 fun check_thm_unif norm_terms = check_thm
-  (apply2 o UUtil.norm_term_unif)
-  (UUtil.norm_thm_beta_eta UUtil.norm_type_unif UUtil.norm_term_unif)
+  (apply2 o Norm.beta_norm_term_unif)
+  (Norm.beta_eta_norm_thm Norm.norm_type_unif Norm.beta_norm_term_unif)
   norm_terms
 
 fun check_thm_match norm_terms = check_thm
-  (apfst o UUtil.norm_term_match)
-  (UUtil.norm_thm_beta_eta (K I) UUtil.norm_term_match)
+  (apfst o Norm.beta_norm_term_match)
+  (Norm.beta_eta_norm_thm (K I) Norm.beta_norm_term_match)
   norm_terms
 
 fun check_list tests name prop ctxt =
@@ -170,13 +171,13 @@ fun check_unit_tests_hints norm_terms norm_thm tests should_succeed hints name u
   end
 
 fun check_unit_tests_hints_unif norm_terms = check_unit_tests_hints
-  (apply2 o UUtil.norm_term_unif)
-  (UUtil.norm_thm_beta_eta UUtil.norm_type_unif UUtil.norm_term_unif)
+  (apply2 o Norm.beta_norm_term_unif)
+  (Norm.beta_eta_norm_thm Norm.norm_type_unif Norm.beta_norm_term_unif)
   norm_terms
 
 fun check_unit_tests_hints_match norm_terms = check_unit_tests_hints
-  (apfst o UUtil.norm_term_match)
-  (UUtil.norm_thm_beta_eta (K I) (K I))
+  (apfst o Norm.beta_norm_term_match)
+  (Norm.beta_eta_norm_thm (K I) (K I))
   norm_terms
 
 

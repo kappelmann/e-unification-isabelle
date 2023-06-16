@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/util.ML
+(*  Title:      E_Unification/unification_util.ML
     Author:     Kevin Kappelmann
 
 Utilities used for e-unifications.
@@ -32,32 +32,6 @@ sig
   val fresh_vars : string -> typ list -> int -> term list * int
   val fresh_var : string -> typ -> int -> term * int
 
-  (* normalisations *)
-  type type_normaliser = Type.tyenv -> typ -> typ
-  val norm_type_match : type_normaliser
-  val norm_type_unif : type_normaliser
-
-  type term_normaliser = Envir.env -> term -> term
-  (*with beta-normalisation*)
-  val norm_term_match : term_normaliser
-  (*with beta-normalisation*)
-  val norm_term_unif : term_normaliser
-
-  type term_type_normaliser = Type.tyenv -> term -> term
-  type thm_normaliser = Proof.context -> Envir.env -> thm -> thm
-  type thm_type_normaliser = thm_normaliser
-
-  (*normalise types of a given variable and abstract it*)
-  val norm_abstract : term_type_normaliser -> Proof.context -> string -> term ->
-    Envir.env -> thm -> thm
-  val norm_abstract_env_thmq : term_type_normaliser -> Proof.context -> string ->
-    term -> (Envir.env * thm) Seq.seq -> (Envir.env * thm) Seq.seq
-
-  val norm_thm_types : type_normaliser -> thm_normaliser
-  val norm_thm : type_normaliser -> term_normaliser -> thm_normaliser
-  (*with beta-normalisation and eta-contraction*)
-  val norm_thm_beta_eta : type_normaliser -> term_normaliser -> thm_normaliser
-
   (* type unification *)
 
   (*raises Unification_Base.UNIF on failure*)
@@ -66,14 +40,18 @@ sig
   val match_types : Unification_Base.type_matcher
 
   (* shared standard cases for unifiers *)
-  val rigid_rigid : term_type_normaliser -> Unification_Base.type_unifier -> Proof.context -> term ->
-    (string * typ) -> Envir.env -> (Envir.env * thm) Seq.seq
+(* norm_term_type unify binders ctxt name T (tb1, tb2) env *)
+  val abstract_abstract : Normalisation.term_type_normaliser -> Unification_Base.unifier ->
+    Proof.context -> (term Unification_Base.binder) list -> string -> typ ->
+    (term * term) -> Envir.env -> (Envir.env * thm) Seq.seq
+  val rigid_rigid : Normalisation.term_type_normaliser -> Unification_Base.type_unifier ->
+    Proof.context -> term -> (string * typ) -> Envir.env -> (Envir.env * thm) Seq.seq
   val bound_bound : Proof.context -> int -> int -> (term Unification_Base.binder) list ->
     thm Seq.seq
-  val comb_comb : thm_type_normaliser -> Unification_Base.closed_unifier -> Proof.context ->
-    (term * term) -> (term * term) -> Envir.env -> (Envir.env * thm) Seq.seq
-  val args_args : thm_type_normaliser -> Unification_Base.closed_unifier -> Proof.context ->
-    (Envir.env * thm) Seq.seq -> term list -> term list -> (Envir.env * thm) Seq.seq
+  val comb_comb : Normalisation.thm_type_normaliser -> Unification_Base.closed_unifier ->
+    Proof.context -> (term * term) -> (term * term) -> Envir.env -> (Envir.env * thm) Seq.seq
+  val args_args : Normalisation.thm_type_normaliser -> Unification_Base.closed_unifier ->
+    Proof.context -> (Envir.env * thm) Seq.seq -> term list -> term list -> (Envir.env * thm) Seq.seq
 
   (* logging *)
   val log_unif_result : Proof.context -> term * term -> Envir.env * thm -> unit
@@ -152,97 +130,6 @@ fun fresh_vars name Ts idx =
 
 fun fresh_var name = yield_singleton (fresh_vars name)
 
-(* normalisations *)
-type type_normaliser = Type.tyenv -> typ -> typ
-type term_normaliser = Envir.env -> term -> term
-type term_type_normaliser = Type.tyenv -> term -> term
-type thm_normaliser = Proof.context -> Envir.env -> thm -> thm
-type thm_type_normaliser = thm_normaliser
-
-(** matching **)
-val norm_type_match = Envir.subst_type
-val norm_type_unif = Envir.norm_type
-
-fun norm_term_match_same (Envir.Envir {tenv, tyenv, ...}) : term Same.operation =
-  let
-    val normT = Envir.subst_type_same tyenv
-    fun norm (Const (a, T)) = Const (a, normT T)
-      | norm (Free (a, T)) = Free (a, normT T)
-      | norm (v as Var (xi, T)) =
-          let
-            fun lookup (Var (xi, T)) = (case Envir.lookup1 tenv (xi, T) of
-                SOME u => u
-              | NONE => raise Same.SAME)
-          in
-            (normT T |> (fn T => Same.commit lookup (Var (xi, T))))
-            handle Same.SAME => lookup v
-          end
-      | norm (Abs (a, T, body)) = (Abs (a, normT T, Same.commit norm body)
-          handle Same.SAME => Abs (a, T, norm body))
-      | norm (Abs (_, _, body) $ t) = Same.commit norm (subst_bound (t, body))
-      | norm (f $ t) =
-          ((case norm f of
-             Abs (_, _, body) => Same.commit norm (subst_bound (t, body))
-           | nf => nf $ Same.commit norm t)
-          handle Same.SAME => f $ norm t)
-      | norm _ = raise Same.SAME
-  in norm end
-
-fun norm_term_match env = Same.commit (norm_term_match_same env)
-fun norm_term_unif env = Envir.norm_term env
-
-
-(** theorems **)
-fun norm_abstract norm_term_type ctxt name bvar (Envir.Envir {tyenv,...}) thm =
-  let val bvar' = norm_term_type tyenv bvar
-  in Unification_Base.abstract_rule name (Thm.cterm_of ctxt bvar') thm end
-
-fun norm_abstract_env_thmq norm_term_type ctxt name bvar =
-  Seq.map (fn (env, thm) => (env, norm_abstract norm_term_type ctxt name bvar env thm))
-
-(*collect and normalise TVars of a term*)
-fun collect_norm_types norm_type ctxt tyenv t =
-  let
-    val norm_type' = norm_type tyenv
-    fun prep_type_entry x = (x, Thm.ctyp_of ctxt (norm_type' (TVar x)))
-  in
-    fold_types (fold_atyps (fn (TVar v) => TVars.add (prep_type_entry v) | _ => I)) t
-    |> TVars.build
-  end
-
-(*collect and normalise Vars of a term*)
-fun collect_norm_terms norm_type norm_term ctxt (env as Envir.Envir {tyenv,...}) t =
-  let
-    val norm_type' = norm_type tyenv
-    val norm_term' = norm_term env
-    fun prep_term_entry (x as (n, T)) = ((n, norm_type' T), Thm.cterm_of ctxt (norm_term' (Var x)))
-  in
-    fold_aterms (fn (Var v) => Vars.add (prep_term_entry v) | _ => I) t
-    |> Vars.build
-  end
-
-(*normalise types of a theorem*)
-fun norm_thm_types norm_types ctxt (Envir.Envir {tyenv, ...}) thm =
-  let
-    val prop = Thm.full_prop_of thm
-    val type_inst = collect_norm_types norm_types ctxt tyenv prop
-    val inst = (type_inst, Vars.empty)
-  in Thm.instantiate inst thm end
-
-(*normalise a theorem*)
-fun norm_thm norm_types norm_terms ctxt (env as Envir.Envir {tyenv,...}) thm =
-  let
-    val prop = Thm.full_prop_of thm
-    val type_inst = collect_norm_types norm_types ctxt tyenv prop
-    val term_inst = collect_norm_terms norm_types norm_terms ctxt env prop
-    val inst = (type_inst, term_inst)
-  in Thm.instantiate inst thm end
-
-fun norm_thm_beta_eta norm_types norm_terms ctxt env =
-  norm_thm norm_types norm_terms ctxt env
-  #> Conversion_Util.thm_conv Drule.beta_eta_conversion
-
-
 (* type unification *)
 
 fun match_types ctxt (T, U) (env as Envir.Envir {maxidx, tenv, tyenv}) =
@@ -254,7 +141,7 @@ fun match_types ctxt (T, U) (env as Envir.Envir {maxidx, tenv, tyenv}) =
     (@{log Logger.DEBUG} ctxt
       (fn _ => Pretty.block [
           Pretty.str "Failed to match types ",
-          pretty_types ctxt [norm_type_match tyenv T, U]
+          pretty_types ctxt [Normalisation.norm_type_match tyenv T, U]
         ] |> Pretty.string_of);
     raise Unification_Base.UNIF)
 
@@ -268,11 +155,22 @@ fun unify_types ctxt (T, U) (env as Envir.Envir {maxidx, tenv, tyenv}) =
     (@{log Logger.DEBUG} ctxt
       (fn _ => Pretty.block [
           Pretty.str "Failed to unify types ",
-          pretty_types ctxt (map (norm_type_unif tyenv) [T, U])
+          pretty_types ctxt (map (Normalisation.norm_type_unif tyenv) [T, U])
         ] |> Pretty.string_of);
     raise Unification_Base.UNIF)
 
 (* shared standard cases for unifiers *)
+
+fun abstract_abstract norm_term_type unify ctxt binders name T tbp =
+  let
+    val (binder as (_, bvar), ctxt') = Unification_Base.fix_binder (name, T) ctxt
+    fun norm_abstract (Envir.Envir {tyenv,...}) thm =
+      let val bvar' = norm_term_type tyenv bvar
+      in Unification_Base.abstract_rule name (Thm.cterm_of ctxt' bvar') thm end
+  in
+    unify (binder :: binders) ctxt' tbp
+    #> Seq.map (fn (env, thm) => (env, norm_abstract env thm))
+  end
 
 fun rigid_rigid norm_term_type unify_types ctxt s (nt, Tt) env =
   let val (ns, Ts) = (if is_Const s then dest_Const else dest_Free) s
