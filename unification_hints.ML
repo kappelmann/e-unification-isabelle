@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/unification_hints.ML
+(*  Title:      ML_Unification/unification_hints.ML
     Author:     Kevin Kappelmann, Paul Bachmann
 
 Unification hints as introduced in "Hints in unification" by Asperti et al, 2009.

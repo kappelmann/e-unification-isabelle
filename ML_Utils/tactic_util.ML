@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/tactic_util.ML
+(*  Title:      ML_Utils/tactic_util.ML
     Author:     Kevin Kappelmann
 
 Tactic utilities.

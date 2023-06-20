@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/unification_util.ML
+(*  Title:      ML_Unification/unification_util.ML
     Author:     Kevin Kappelmann
 
 Utilities used for e-unifications.

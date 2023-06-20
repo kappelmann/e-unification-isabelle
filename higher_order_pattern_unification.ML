@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/higher_order_pattern_unification.ML
+(*  Title:      ML_Unification/higher_order_pattern_unification.ML
     Author:     Tobias Nipkow, Christine Heinzelmann, Stefan Berghofer, and
                 Kevin Kappelmann TU Muenchen
 

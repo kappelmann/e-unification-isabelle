@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/first_order_unification.ML
+(*  Title:      ML_Unification/first_order_unification.ML
     Author:     Kevin Kappelmann, Paul Bachmann
 
 First-order E-unification.

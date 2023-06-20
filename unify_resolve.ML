@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/unify_resolve.ML
+(*  Title:      ML_Unification/unify_resolve.ML
     Author:     Kevin Kappelmann
 
 Resolution with parametrised unification function.

@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/normalisation.ML
+(*  Title:      ML_Unification/normalisation.ML
     Author:     Kevin Kappelmann
 
 Normalisations with respect to an environment. Adapted and generalised from envir.ML

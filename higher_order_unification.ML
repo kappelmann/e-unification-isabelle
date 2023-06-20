@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/higher_order_unification.ML
+(*  Title:      ML_Unification/higher_order_unification.ML
     Author:     Kevin Kappelmann TU Muenchen
 
 Higher-order unification from the Pure kernel adjusted to fit the

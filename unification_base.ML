@@ -1,4 +1,4 @@
-(*  Title:      E_Unification/unification_base.ML
+(*  Title:      ML_Unification/unification_base.ML
     Author:     Kevin Kappelmann
 
 Basic definitions for unifiers.
