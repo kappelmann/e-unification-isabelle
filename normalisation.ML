@@ -170,7 +170,7 @@ fun collect_norm_types norm_type ctxt tyenv t =
     val norm_type' = norm_type tyenv
     fun prep_type_entry x = (x, Thm.ctyp_of ctxt (norm_type' (TVar x)))
   in
-    fold_types (fold_atyps (fn (TVar v) => TVars.add (prep_type_entry v) | _ => I)) t
+    fold_types (fold_atyps (fn TVar v => TVars.add (prep_type_entry v) | _ => I)) t
     |> TVars.build
   end
 
@@ -181,7 +181,7 @@ fun collect_norm_terms norm_type norm_term ctxt (env as Envir.Envir {tyenv,...})
     val norm_term' = norm_term env
     fun prep_term_entry (x as (n, T)) = ((n, norm_type' T), Thm.cterm_of ctxt (norm_term' (Var x)))
   in
-    fold_aterms (fn (Var v) => Vars.add (prep_term_entry v) | _ => I) t
+    fold_aterms (fn Var v => Vars.add (prep_term_entry v) | _ => I) t
     |> Vars.build
   end
 

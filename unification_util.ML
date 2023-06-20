@@ -42,16 +42,20 @@ sig
   (* shared standard cases for unifiers *)
 (* norm_term_type unify binders ctxt name T (tb1, tb2) env *)
   val abstract_abstract : Normalisation.term_type_normaliser -> Unification_Base.unifier ->
-    Proof.context -> (term Unification_Base.binder) list -> string -> typ ->
+    (term Unification_Base.binder) list -> Proof.context -> string -> typ ->
     (term * term) -> Envir.env -> (Envir.env * thm) Seq.seq
+  (*raises UNIF if types do not unify*)
   val rigid_rigid : Normalisation.term_type_normaliser -> Unification_Base.type_unifier ->
     Proof.context -> term -> (string * typ) -> Envir.env -> (Envir.env * thm) Seq.seq
-  val bound_bound : Proof.context -> int -> int -> (term Unification_Base.binder) list ->
+  val bound_bound : (term Unification_Base.binder) list -> Proof.context -> (int * int) ->
     thm Seq.seq
   val comb_comb : Normalisation.thm_type_normaliser -> Unification_Base.closed_unifier ->
     Proof.context -> (term * term) -> (term * term) -> Envir.env -> (Envir.env * thm) Seq.seq
   val args_args : Normalisation.thm_type_normaliser -> Unification_Base.closed_unifier ->
-    Proof.context -> (Envir.env * thm) Seq.seq -> term list -> term list -> (Envir.env * thm) Seq.seq
+    Proof.context -> (term list * term list) -> (Envir.env * thm) Seq.seq -> (Envir.env * thm) Seq.seq
+  val strip_comb_strip_comb : Normalisation.thm_type_normaliser -> Unification_Base.unifier ->
+    (term Unification_Base.binder) list -> Proof.context -> (term * term) ->
+    (term list * term list) -> Envir.env -> (Envir.env * thm) Seq.seq
 
   (* logging *)
   val log_unif_result : Proof.context -> term * term -> Envir.env * thm -> unit
@@ -161,7 +165,7 @@ fun unify_types ctxt (T, U) (env as Envir.Envir {maxidx, tenv, tyenv}) =
 
 (* shared standard cases for unifiers *)
 
-fun abstract_abstract norm_term_type unify ctxt binders name T tbp =
+fun abstract_abstract norm_term_type unify binders ctxt name T tbp =
   let
     val (binder as (_, bvar), ctxt') = Unification_Base.fix_binder (name, T) ctxt
     fun norm_abstract (Envir.Envir {tyenv,...}) thm =
@@ -175,17 +179,16 @@ fun abstract_abstract norm_term_type unify ctxt binders name T tbp =
 fun rigid_rigid norm_term_type unify_types ctxt s (nt, Tt) env =
   let val (ns, Ts) = (if is_Const s then dest_Const else dest_Free) s
   in
-    (if ns = nt then
+    if ns = nt then
       let val (env' as Envir.Envir {tyenv,...}) = unify_types ctxt (Ts, Tt) env
       in
         (env', Unification_Base.reflexive_term ctxt (norm_term_type tyenv s))
         |> Seq.single
       end
-    else Seq.empty)
-    handle Unification_Base.UNIF => Seq.empty (*types do not match*)
+    else Seq.empty
   end
 
-fun bound_bound ctxt i j binders =
+fun bound_bound binders ctxt (i, j) =
   if i = j
   then Unification_Base.nth_binder_data binders i |> Unification_Base.reflexive_term ctxt |> Seq.single
   else Seq.empty
@@ -202,7 +205,7 @@ fun comb_comb norm_thm_types unify ctxt (f, x) (g, y) env =
       |> pair env
   in Seq.map combine env_thmq end
 
-fun args_args norm_thm_types unify ctxt env_thmhq ss ts =
+fun args_args norm_thm_types unify ctxt (ss, ts) env_thmhq =
   (let
     val args = ss ~~ ts
     fun unif_arg tp = Seq.maps
@@ -217,6 +220,10 @@ fun args_args norm_thm_types unify ctxt env_thmhq ss ts =
       in (env_res, fold_rev norm_combine arg_thms (norm_thm_types' thmh)) end
   in Seq.maps (fn (env, thmh) => unif_args env |> Seq.map (combine thmh)) env_thmhq end)
   handle ListPair.UnequalLengths => Seq.empty
+
+fun strip_comb_strip_comb norm_thm_types unify binders ctxt (sh, th) (ss, ts) =
+  unify binders ctxt (sh, th)
+  #> args_args norm_thm_types (unify binders) ctxt (ss, ts)
 
 (* logging *)
 
