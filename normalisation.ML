@@ -37,8 +37,12 @@ sig
   val norm_thm_types_match : thm_normaliser
   val norm_thm_types_unif : thm_normaliser
   val norm_thm : type_normaliser -> term_normaliser -> thm_normaliser
+  val norm_thm_match : thm_normaliser
+  val norm_thm_unif : thm_normaliser
   (*with beta-normalisation and eta-contraction*)
   val beta_eta_norm_thm : type_normaliser -> term_normaliser -> thm_normaliser
+  val beta_eta_norm_thm_match : thm_normaliser
+  val beta_eta_norm_thm_unif : thm_normaliser
 
 end
 
@@ -205,8 +209,14 @@ fun norm_thm norm_types norm_terms ctxt (env as Envir.Envir {tyenv,...}) thm =
     val inst = (type_inst, term_inst)
   in Thm.instantiate inst thm end
 
+val norm_thm_match = norm_thm norm_type_match norm_term_match
+val norm_thm_unif = norm_thm norm_type_unif norm_term_unif
+
 fun beta_eta_norm_thm norm_types norm_terms ctxt env =
   norm_thm norm_types norm_terms ctxt env
   #> Conversion_Util.thm_conv Drule.beta_eta_conversion
+
+val beta_eta_norm_thm_match = beta_eta_norm_thm norm_type_match norm_term_match
+val beta_eta_norm_thm_unif = beta_eta_norm_thm norm_type_unif norm_term_unif
 
 end

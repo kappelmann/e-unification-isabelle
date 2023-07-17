@@ -21,14 +21,15 @@ sig
   the corresponding bound variable, for example, when having to create a reflexivity theorem for the
   binder.*)
   type 'a binder = (string * typ) * 'a
-  val fix_binders : (string * typ) list -> Proof.context -> (term binder) list * Proof.context
+  type 'a binders = ('a binder) list
+  val fix_binders : (string * typ) list -> Proof.context -> term binders * Proof.context
   val fix_binder : (string * typ) -> Proof.context -> term binder * Proof.context
   (*returns types of binders*)
-  val binder_types : 'a binder list -> typ list
+  val binder_types : 'a binders -> typ list
   (*returns free variable corresponding to the given binder*)
-  val nth_binder_data : 'a binder list -> int -> 'a
+  val nth_binder_data : 'a binders -> int -> 'a
   (*replaces all binders by their corresponding free variable in the given term*)
-  val replace_binders : (term binder) list -> term -> term
+  val replace_binders : term binders -> term -> term
 
   (*raised on unsupported input*)
   exception PATTERN
@@ -39,7 +40,7 @@ sig
   type type_matcher = type_unifier
   type closed_unifier = Proof.context -> term * term -> Envir.env -> (Envir.env * thm) Seq.seq
   (*(term binder) list stores fresh free variables associated to each loose bound variable*)
-  type unifier = (term binder) list -> closed_unifier
+  type unifier = term binders -> closed_unifier
   type closed_matcher = closed_unifier
   type matcher = unifier
 
@@ -60,6 +61,7 @@ val reflexive_term = reflexive oo Thm.cterm_of
 
 (* binders *)
 type 'a binder = (string * typ) * 'a
+type 'a binders = ('a binder) list
 
 fun fix_binders nTs ctxt =
   Variable.variant_fixes (map fst nTs) ctxt
@@ -82,7 +84,7 @@ type type_unifier = Proof.context -> typ * typ -> Envir.env -> Envir.env
 type type_matcher = type_unifier
 type closed_unifier = Proof.context -> term * term -> Envir.env ->
   (Envir.env * thm) Seq.seq
-type unifier = (term binder) list -> closed_unifier
+type unifier = term binders -> closed_unifier
 type closed_matcher = closed_unifier
 type matcher = unifier
 

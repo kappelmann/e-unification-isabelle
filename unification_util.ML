@@ -42,19 +42,19 @@ sig
   (* shared standard cases for unifiers *)
 (* norm_term_type unify binders ctxt name T (tb1, tb2) env *)
   val abstract_abstract : Normalisation.term_type_normaliser -> Unification_Base.unifier ->
-    (term Unification_Base.binder) list -> Proof.context -> string -> typ ->
+    term Unification_Base.binders -> Proof.context -> string -> typ ->
     (term * term) -> Envir.env -> (Envir.env * thm) Seq.seq
   (*raises UNIF if types do not unify*)
   val rigid_rigid : Normalisation.term_type_normaliser -> Unification_Base.type_unifier ->
     Proof.context -> term -> (string * typ) -> Envir.env -> (Envir.env * thm) Seq.seq
-  val bound_bound : (term Unification_Base.binder) list -> Proof.context -> (int * int) ->
+  val bound_bound : term Unification_Base.binders -> Proof.context -> (int * int) ->
     thm Seq.seq
   val comb_comb : Normalisation.thm_type_normaliser -> Unification_Base.closed_unifier ->
     Proof.context -> (term * term) -> (term * term) -> Envir.env -> (Envir.env * thm) Seq.seq
   val args_args : Normalisation.thm_type_normaliser -> Unification_Base.closed_unifier ->
     Proof.context -> (term list * term list) -> (Envir.env * thm) Seq.seq -> (Envir.env * thm) Seq.seq
   val strip_comb_strip_comb : Normalisation.thm_type_normaliser -> Unification_Base.unifier ->
-    (term Unification_Base.binder) list -> Proof.context -> (term * term) ->
+    term Unification_Base.binders -> Proof.context -> (term * term) ->
     (term list * term list) -> Envir.env -> (Envir.env * thm) Seq.seq
 
   (* logging *)

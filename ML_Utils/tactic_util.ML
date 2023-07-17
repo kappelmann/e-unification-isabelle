@@ -24,9 +24,11 @@ sig
   val SUBPROOF' : (Subgoal.focus -> int -> tactic) -> Proof.context -> int -> tactic
 
   val CSUBGOAL_DATA : (cterm -> 'a) -> ('a -> int -> tactic) -> int -> tactic
-  val CSUBGOAL_PREMS_CONCL : (cterm list * cterm -> 'a) -> ('a -> int -> tactic) -> int -> tactic
+  val CSUBGOAL_STRIPPED : ((string * cterm) list * (cterm list * cterm) -> 'a) ->
+    ('a -> int -> tactic) -> int -> tactic
   val SUBGOAL_DATA : (term -> 'a) -> ('a -> int -> tactic) -> int -> tactic
-  val SUBGOAL_PREMS_CONCL : (term list * term -> 'a) -> ('a -> int -> tactic) -> int -> tactic
+  val SUBGOAL_STRIPPED : ((string * typ) list * (term list * term) -> 'a) ->
+    ('a -> int -> tactic) -> int -> tactic
 
   (* tactics *)
   val insert_tac : thm -> int -> tactic
@@ -36,6 +38,14 @@ sig
 
   (*solve subgoal by assumption, preferring premise n*)
   val nth_assume_tac : int -> Proof.context -> int -> tactic
+
+  (*resolution*)
+  val no_lift_biresolve_tac : bool -> thm -> int -> Proof.context -> int -> tactic
+  val no_lift_resolve_tac : thm -> int -> Proof.context -> int -> tactic
+  val no_lift_eresolve_tac : thm -> int -> Proof.context -> int -> tactic
+
+  (*rewrite subgoal according to the given equality theorem "lhs \<equiv> subgoal"*)
+  val rewrite_subgoal_tac : thm -> Proof.context -> int -> tactic
 
   (*protect premises starting from the given index in the specified subgoal*)
   val protect_tac : int -> Proof.context -> int -> tactic
@@ -83,9 +93,9 @@ fun FOCUS_PARAMS_CTXT tac = Subgoal.FOCUS_PARAMS (#context #> tac)
 fun FOCUS_PARAMS_CTXT' tac = FOCUS_PARAMS' (#context #> tac)
 
 fun CSUBGOAL_DATA f tac = CSUBGOAL (uncurry tac o apfst f)
-fun CSUBGOAL_PREMS_CONCL f = CSUBGOAL_DATA (f o Term_Util.strip_cimp)
+fun CSUBGOAL_STRIPPED f = CSUBGOAL_DATA (f o Term_Util.strip_cgoal)
 fun SUBGOAL_DATA f tac = SUBGOAL (uncurry tac o apfst f)
-fun SUBGOAL_PREMS_CONCL f = SUBGOAL_DATA (f o Term_Util.strip_imp)
+fun SUBGOAL_STRIPPED f = SUBGOAL_DATA (f o Term_Util.strip_goal)
 
 (* tactics *)
 fun insert_tac thm = resolve0_tac [thm COMP revcut_rl]
@@ -94,6 +104,22 @@ fun thin_tac n = rotate_tac n THEN' (DETERM o eresolve0_tac [thin_rl]) THEN' rot
 fun thin_tacs delete_is = EVERY_ARG' thin_tac (sort int_ord delete_is |> map_index ((op -) o swap))
 
 fun nth_assume_tac n ctxt = rotate_tac n THEN' assume_tac ctxt
+
+(*resolution*)
+fun no_lift_biresolve_tac eres brule nsubgoals ctxt =
+  Thm.bicompose (SOME ctxt) {flatten = true, match = true, incremented = true}
+  (eres, brule, nsubgoals)
+  #> PRIMSEQ
+
+val no_lift_resolve_tac = no_lift_biresolve_tac false
+val no_lift_eresolve_tac = no_lift_biresolve_tac true
+
+fun rewrite_subgoal_tac eq_thm =
+  let
+    val (lhs, rhs) = Thm.dest_equals (Thm.cconcl_of eq_thm)
+    val eq_elim = Thm.instantiate' [] [SOME lhs, SOME rhs] Drule.equal_elim_rule1
+    val thm = Thm.implies_elim eq_elim eq_thm
+  in no_lift_resolve_tac thm 1 end
 
 fun apply_tac tac i = Goal.init #> tac i #> Seq.map Goal.conclude
 

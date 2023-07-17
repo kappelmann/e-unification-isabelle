@@ -8,9 +8,11 @@ session ML_Unification = "Pure" +
   sessions
     Logging
     ML_Utils
+  directories
+    "Unification_Tactics"
   theories
     ML_Unification
-    ML_Unification_Resolution
+    ML_Unification_Tactics
 
 session ML_Unification_Tests in "Tests" = "HOL" +
   sessions

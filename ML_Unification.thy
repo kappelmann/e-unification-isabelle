@@ -11,6 +11,7 @@ text \<open>Unification modulo equations.\<close>
 ML_file\<open>higher_order_unification.ML\<close>
 ML_file\<open>higher_order_pattern_unification.ML\<close>
 ML_file\<open>first_order_unification.ML\<close>
+ML_file\<open>mixed_unification.ML\<close>
 
 
 end
