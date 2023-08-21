@@ -7,21 +7,24 @@ signature GENERAL_UTIL =
 sig
   val flip : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
 
-  val nth_replace : int -> 'a -> 'a list -> 'a list
-
   val find_first_index : ('a -> bool) -> 'a list -> (int * 'a) option
 
   (*returns false if function throws an exception*)
   val try_bool : ('a -> bool) -> 'a -> bool
 
   val fold_rev_index: (int * 'a -> 'b -> 'b) -> 'a list -> 'b -> 'b
+
+  (* sequences *)
+  (*raises exception if sequence is empty and returns the sequence otherwise*)
+  val seq_try : exn -> 'a Seq.seq -> 'a Seq.seq
+  val seq_is_empty : 'a Seq.seq -> (bool * 'a Seq.seq)
+
 end
 
 structure General_Util : GENERAL_UTIL =
 struct
 
 fun flip f x y = f y x
-fun nth_replace n x = nth_map n (K x)
 
 fun find_first_index p = get_index (Option.filter p)
 
@@ -31,5 +34,14 @@ fun fold_rev_index f =
   let fun fold_aux _ [] y = y
         | fold_aux i (x :: xs) y = f (i, x) (fold_aux (i + 1) xs y)
   in fold_aux 0 end
+
+(* sequences *)
+fun seq_try exn sq = case Seq.pull sq of
+    NONE => raise exn
+  | SOME v => Seq.make (fn () => SOME v)
+
+fun seq_is_empty sq = case Seq.pull sq of
+    NONE => (true, Seq.empty)
+  | SOME v => (false, Seq.make (fn () => SOME v))
 
 end

@@ -11,12 +11,34 @@ text \<open>Tests for @{ML_structure "First_Order_Unification"}.\<close>
 
 ML\<open>
   structure Prop = SpecCheck_Property
+  structure UC = Unification_Combinator
   open Unification_Tests_Base
   structure Unif = First_Order_Unification
-  val match_hints = Unif.match_hints []
   val match = Unif.match []
-  val unify_hints = Unif.unify_hints []
+  val match_hints =
+    let fun match binders =
+      UC.add_fallback_matcher
+      (Unif.e_match Unification_Util.match_types)
+      (Unification_Hints.try_hints (Named_Theorems_Hints.UHI.Hint_Index.get_hints false)
+        Higher_Order_Pattern_Unification.match
+        Unif.norm_term_match Unif.norm_thm_match
+        (match |> UC.norm_matcher Envir_Normalisation.beta_norm_term_match)
+        |> UC.norm_matcher Unif.norm_term_match)
+      binders
+    in match [] end
+
   val unify = Unif.unify []
+  val unify_hints =
+    let fun unif binders =
+      UC.add_fallback_unifier
+      (Unif.e_unify Unification_Util.unify_types)
+      (Unification_Hints.try_hints (Named_Theorems_Hints.UHI.get_hints)
+        Higher_Order_Pattern_Unification.match
+        Unif.norm_term_unify Unif.norm_thm_unify
+        (unif |> UC.norm_unifier Envir_Normalisation.beta_norm_term_unif)
+        |> UC.norm_unifier Unif.norm_term_unify)
+      binders
+    in unif [] end
 \<close>
 
 subsection \<open>Matching\<close>

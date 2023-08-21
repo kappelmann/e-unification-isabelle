@@ -1,6 +1,10 @@
+(*  Title:      ML_Unification/first_order_unification_tests.ML
+    Author:     Kevin Kappelmann
+
+First-order unification tests.
+*)
 signature FIRST_ORDER_UNIFICATION_TESTS =
 sig
-
   val tests_identical : Proof.context Lecker.test
   val tests_identical_env : Proof.context Lecker.test
   val tests_thm : Proof.context Lecker.test
@@ -20,7 +24,6 @@ sig
   val unit_tests : Proof.context Lecker.test
 
   val tests : Proof.context Lecker.test
-
 end
 
 functor First_Order_Unification_Tests(P : sig
@@ -213,13 +216,14 @@ fun unit_tests_hints_non_recursive ctxt r =
   let
     val ctxt' = Proof_Context.set_mode Proof_Context.mode_schematic ctxt
     val hints = map (Skip_Proof.make_thm (Proof_Context.theory_of ctxt') o Syntax.read_term ctxt') [
-      "?x \<equiv> ?z \<Longrightarrow> ?y \<equiv> (0 :: nat) \<Longrightarrow> ?x + ?y \<equiv> ?z",
-      "?x \<equiv> 1 \<Longrightarrow> ?y \<equiv> 1 \<Longrightarrow> ?x * ?y \<equiv> (1 :: nat)"
+      "?z \<equiv> ?x \<Longrightarrow> ?y \<equiv> (0 :: nat) \<Longrightarrow> ?z \<equiv> ?x + ?y",
+      "?x \<equiv> 1 \<Longrightarrow> ?y \<equiv> 1 \<Longrightarrow> (1 :: nat) \<equiv> ?x * ?y"
     ]
     val tests = map (apply2 (Syntax.read_term ctxt')) [
       ("1 :: nat", "1 + 0 :: nat"),
       ("1 :: nat", "?x + 0 :: nat"),
-      ("1 :: nat", "?a * ?b :: nat")
+      ("1 :: nat", "?a * ?b :: nat"),
+      ("\<lambda>(x :: nat) y. x", "\<lambda>(x :: nat) y. x + 0")
     ]
     fun check_hints should_succeed hints name =
       check_unit_tests_hints_unif tests should_succeed hints ("non-recursive hint unit tests for " ^ name)
@@ -289,9 +293,8 @@ fun unit_tests_hints_recursive ctxt r =
 (** disabling symmetric application of hints **)
 fun unit_tests_hints_try_symmetric ctxt r =
   let
-    val ctxt' =
-      Proof_Context.set_mode Proof_Context.mode_schematic ctxt
-      |> Config.put Unification_Hints.try_symmetric false
+    val ctxt' = Proof_Context.set_mode Proof_Context.mode_schematic ctxt
+      |> Config.put Unification_Tests_Base.Named_Theorems_Hints.UHI.get_symmetric false
     val hints = map (Skip_Proof.make_thm (Proof_Context.theory_of ctxt') o Syntax.read_term ctxt') [
         "?x \<equiv> ?z \<Longrightarrow> ?y \<equiv> (0 :: nat) \<Longrightarrow> ?x + ?y \<equiv> ?z"
       ]
@@ -316,7 +319,7 @@ fun unit_tests_multiple_successful_hints ctxt r =
         "?x \<equiv> (?z + 0) \<Longrightarrow> ?y \<equiv> (0 :: nat) \<Longrightarrow> ?x + ?y \<equiv> ?z"
       ]
     val tests = map (apply2 (Syntax.read_term ctxt')) [
-      ("1 :: nat", "(?x + 0) + 0 :: nat")
+      ("(?x + 0) + 0 :: nat", "1 :: nat")
     ]
     fun check_num_success num_success hints name unif ctxt r =
       let val ctxt' = add_hints hints ctxt

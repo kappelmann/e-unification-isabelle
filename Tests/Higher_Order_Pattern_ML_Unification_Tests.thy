@@ -11,12 +11,32 @@ text \<open>Tests for @{ML_structure "Higher_Order_Pattern_Unification"}.\<close
 
 ML\<open>
   structure Prop = SpecCheck_Property
+  structure UC = Unification_Combinator
   open Unification_Tests_Base
   structure Unif = Higher_Order_Pattern_Unification
-  val match_hints = Unif.match_hints []
   val match = Unif.match []
-  val unify_hints = Unif.unify_hints []
+  val match_hints =
+    let fun match binders =
+      UC.add_fallback_matcher
+      (Unif.e_match Unification_Util.match_types)
+      (Unification_Hints.try_hints (Named_Theorems_Hints.UHI.Hint_Index.get_hints false)
+        Higher_Order_Pattern_Unification.match
+        Unif.norm_term_match Unif.norm_thm_match match
+        |> UC.norm_matcher Unif.norm_term_match)
+      binders
+    in match [] end
+
   val unify = Unif.unify []
+  val unify_hints =
+    let fun unif binders =
+      UC.add_fallback_unifier
+      (Unif.e_unify Unification_Util.unify_types)
+      (Unification_Hints.try_hints (Named_Theorems_Hints.UHI.get_hints)
+        Higher_Order_Pattern_Unification.match
+        Unif.norm_term_unify Unif.norm_thm_unify unif
+        |> UC.norm_matcher Unif.norm_term_unify)
+      binders
+    in unif [] end
 \<close>
 
 subsection \<open>Matching\<close>
@@ -119,8 +139,7 @@ ML_command\<open>
   val check_hints = check_unit_tests_hints_unif tests
   val _ = Lecker.test_group ctxt () [
       check_hints true [] "unify" unify,
-      check_hints true [] "unify_hints without hints" unify_hints,
-      check_hints true [] "unify_hints with hints" unify_hints
+      check_hints true [] "unify_hints" unify_hints
     ]
 \<close>
 

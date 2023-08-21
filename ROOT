@@ -1,18 +1,25 @@
-chapter "ML-Unification"
-
-session ML_Utils in ML_Utils = "Pure" +
-  theories
-    ML_Utils
-
 session ML_Unification = "Pure" +
   sessions
     Logging
-    ML_Utils
   directories
+    "Binders"
+    "ML_Utils"
+    "ML_Utils/Functor_Instances"
+    "ML_Utils/Parsing"
+    "Normalisations"
+    "Unifiers"
+    "Unification_Attributes"
+    "Unification_Hints"
+    "Unification_Parsers"
     "Unification_Tactics"
+    "Unification_Tactics/Assumption"
+    "Unification_Tactics/Fact"
+    "Unification_Tactics/Resolution"
+    "Term_Index"
   theories
-    ML_Unification
-    ML_Unification_Tactics
+    ML_Unifiers
+    Unification_Attributes
+    Unification_Tactics
 
 session ML_Unification_Tests in "Tests" = "HOL" +
   sessions

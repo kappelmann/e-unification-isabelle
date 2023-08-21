@@ -1,3 +1,8 @@
+(*  Title:      ML_Unification/higher_order_pattern_unification_tests.ML
+    Author:     Kevin Kappelmann
+
+Higher-order pattern unification tests.
+*)
 signature HIGHER_ORDER_PATTERN_UNIFICATION_TESTS =
 sig
   val unit_tests_unifiable : Proof.context -> (term * term) list

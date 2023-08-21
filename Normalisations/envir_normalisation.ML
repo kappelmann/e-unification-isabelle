@@ -1,9 +1,9 @@
-(*  Title:      ML_Unification/normalisation.ML
+(*  Title:      ML_Unification/envir_normalisation.ML
     Author:     Kevin Kappelmann
 
 Normalisations with respect to an environment. Adapted and generalised from envir.ML
 *)
-signature NORMALISATION =
+signature ENVIR_NORMALISATION =
 sig
   (* types *)
   type type_normaliser = Type.tyenv -> typ -> typ
@@ -11,9 +11,9 @@ sig
   val norm_type_unif : type_normaliser
 
   (* terms *)
-  type term_type_normaliser = Type.tyenv -> term -> term
+  type term_type_normaliser = Type.tyenv -> Term_Normalisation.term_normaliser
   val norm_term_types : type_normaliser -> term_type_normaliser
-  type term_normaliser = Envir.env -> term -> term
+  type term_normaliser = Envir.env -> Term_Normalisation.term_normaliser
 
   (** matching **)
   val norm_term_types_match : term_type_normaliser
@@ -24,7 +24,7 @@ sig
 
   (** unification **)
   val norm_term_types_unif : term_type_normaliser
-  (*with beta-normalisation*)
+  (*without beta-normalisation*)
   val norm_term_unif : term_normaliser
   (*with beta-normalisation*)
   val beta_norm_term_unif : term_normaliser
@@ -40,13 +40,13 @@ sig
   val norm_thm_match : thm_normaliser
   val norm_thm_unif : thm_normaliser
   (*with beta-normalisation and eta-contraction*)
-  val beta_eta_norm_thm : type_normaliser -> term_normaliser -> thm_normaliser
-  val beta_eta_norm_thm_match : thm_normaliser
-  val beta_eta_norm_thm_unif : thm_normaliser
+  val beta_eta_short_norm_thm : type_normaliser -> term_normaliser -> thm_normaliser
+  val beta_eta_short_norm_thm_match : thm_normaliser
+  val beta_eta_short_norm_thm_unif : thm_normaliser
 
 end
 
-structure Normalisation : NORMALISATION =
+structure Envir_Normalisation : ENVIR_NORMALISATION =
 struct
 
 (* types *)
@@ -56,10 +56,10 @@ val norm_type_match = Envir.subst_type
 val norm_type_unif = Envir.norm_type
 
 (* terms *)
-type term_type_normaliser = Type.tyenv -> term -> term
+type term_type_normaliser = Type.tyenv -> Term_Normalisation.term_normaliser
 fun norm_term_types norm_type = map_types o norm_type
 
-type term_normaliser = Envir.env -> term -> term
+type term_normaliser = Envir.env -> Term_Normalisation.term_normaliser
 
 (** matching **)
 val norm_term_types_match = norm_term_types norm_type_match
@@ -98,7 +98,7 @@ fun norm_term_match2 beta_norm (Envir.Envir {tenv, tyenv, ...}) : term Same.oper
       | norm (Free (a, T)) = Free (a, normT T)
       | norm (v as Var (xi, T)) =
           let
-            fun lookup (Var (xi, T)) = (case Envir.lookup1 tenv (xi, T) of
+            fun lookup v = (case Envir.lookup1 tenv (dest_Var v) of
                 SOME u => u
               | NONE => raise Same.SAME)
           in
@@ -212,11 +212,11 @@ fun norm_thm norm_types norm_terms ctxt (env as Envir.Envir {tyenv,...}) thm =
 val norm_thm_match = norm_thm norm_type_match norm_term_match
 val norm_thm_unif = norm_thm norm_type_unif norm_term_unif
 
-fun beta_eta_norm_thm norm_types norm_terms ctxt env =
+fun beta_eta_short_norm_thm norm_types norm_terms ctxt env =
   norm_thm norm_types norm_terms ctxt env
-  #> Conversion_Util.thm_conv Drule.beta_eta_conversion
+  #> Conv.fconv_rule Drule.beta_eta_conversion
 
-val beta_eta_norm_thm_match = beta_eta_norm_thm norm_type_match norm_term_match
-val beta_eta_norm_thm_unif = beta_eta_norm_thm norm_type_unif norm_term_unif
+val beta_eta_short_norm_thm_match = beta_eta_short_norm_thm norm_type_match norm_term_match
+val beta_eta_short_norm_thm_unif = beta_eta_short_norm_thm norm_type_unif norm_term_unif
 
 end

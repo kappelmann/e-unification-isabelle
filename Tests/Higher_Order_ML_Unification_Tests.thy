@@ -12,7 +12,7 @@ ML\<open>
   structure Prop = SpecCheck_Property
   open Unification_Tests_Base
   structure Unif = Higher_Order_Unification
-  val unify = Unif.unify
+  val unify = Unif.unify []
 \<close>
 
 subsection \<open>Unification\<close>
@@ -21,12 +21,23 @@ subsubsection \<open>Generated Tests\<close>
 paragraph \<open>First Order\<close>
 
 ML_command\<open>
+  structure HOP = Higher_Order_Pattern_Unification
   structure Test_Params =
   struct
     val unify = unify
-    (*Note: there is no higher-order unification with hints as of now;
+    (*TODO: there is no higher-order unification with hints as of now;
       we hence use the higher-order pattern hints unifier for those tests*)
-    val unify_hints = Higher_Order_Pattern_Unification.unify_hints []
+    val unify_hints =
+      let fun unif binders =
+        Unification_Combinator.add_fallback_unifier
+        (HOP.e_unify Unification_Util.unify_types)
+        (Unification_Hints.try_hints (Named_Theorems_Hints.UHI.get_hints)
+          Higher_Order_Pattern_Unification.match
+          HOP.norm_term_unify HOP.norm_thm_unify unif
+          |> Unification_Combinator.norm_unifier HOP.norm_term_unify)
+        binders
+      in unif [] end
+
     val params = {
       nv = 10,
       ni = 10,
