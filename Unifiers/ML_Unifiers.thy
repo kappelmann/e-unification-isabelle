@@ -4,7 +4,6 @@ theory ML_Unifiers
   imports
     ML_Unification_Base
     ML_Functor_Instances
-    Main
 begin
 
 paragraph \<open>Summary\<close>

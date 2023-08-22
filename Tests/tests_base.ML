@@ -8,9 +8,8 @@ TODO: generalise for unifiers with open terms
 signature UNIFICATION_TESTS_BASE =
 sig
 
-  structure Named_Theorems_Hints : NAMED_THEOREMS_UNIFICATION_HINTS
-  val get_hints : Proof.context -> term * term -> Unification_Hints.unif_hint Seq.seq
-  val add_hint : Unification_Hints.unif_hint -> Context.generic -> Context.generic
+  structure Hints : TERM_INDEX_UNIFICATION_HINTS
+  val add_hint : Unification_Hints_Base.unif_hint -> Context.generic -> Context.generic
   val add_hints : thm list -> Proof.context -> Proof.context
 
   val term_gen : Proof.context -> int -> int -> int * int * int * int ->
@@ -74,10 +73,9 @@ end
 structure Unification_Tests_Base : UNIFICATION_TESTS_BASE =
 struct
 
-structure Named_Theorems_Hints = Test_Unification_Hints
+structure Hints = Test_Unification_Hints
 
-val get_hints = Named_Theorems_Hints.UHI.get_hints
-val add_hint = Named_Theorems_Hints.Hints.add_thm
+val add_hint = Test_Unification_Hints.add_hint_prio o rpair Term_Index_Unification_Hints_Prio.MEDIUM
 fun add_hints thms ctxt = fold add_hint thms (Context.Proof ctxt) |> Context.proof_of
 
 structure Gen = SpecCheck_Generator

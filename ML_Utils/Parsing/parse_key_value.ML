@@ -45,15 +45,14 @@ fun parse_key names key_from_string =
   let val pretty_keys = pretty_keys I names |> Pretty.string_of
   in
     Parse.group (K pretty_keys)
-      (Util.parse_nonempty_name (K "Key must not be empty.") >> key_from_string)
+      (Util.nonempty_name (K "Key must not be empty.") >> key_from_string)
   end
 
 fun eq_key_entry eq_key (rn, (xn, _)) = eq_key (rn, xn)
 
 fun has_required_keys eq_key_entry rks ks = subset eq_key_entry (rks, ks)
 
-fun gen_parse_entries_required filter_parser parse_distinct_list
-  eq_key key_to_string ks parse_entries =
+fun gen_parse_entries_required filter_parser eq_key key_to_string ks parse_entries =
   let
     val eq_key_entry = eq_key_entry eq_key
     fun failure_required es = Pretty.fbreaks [
@@ -73,12 +72,10 @@ fun gen_parse_entries_required filter_parser parse_distinct_list
   in
     filter_parser
       (has_required_keys eq_key_entry ks) (Util.fail failure_required) parse_entries
-    |> parse_distinct_list (eq_key o apply2 fst) failure_distinct
+    |> Util.distinct_list (eq_key o apply2 fst) failure_distinct
   end
 
-fun parse_entries_required eq_key =
-  gen_parse_entries_required Util.filter_parser_cut Util.parse_distinct_list eq_key
-fun parse_entries_required' eq_key =
-  gen_parse_entries_required Util.filter_parser_cut' Util.parse_distinct_list' eq_key
+fun parse_entries_required eq_key = gen_parse_entries_required Util.filter_cut eq_key
+fun parse_entries_required' eq_key = gen_parse_entries_required Util.filter_cut' eq_key
 
 end

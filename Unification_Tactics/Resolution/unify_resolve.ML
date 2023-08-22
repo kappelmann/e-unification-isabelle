@@ -44,7 +44,7 @@ sig
     chained_mode) PCA.entries
 
   val unify_resolve_tac : args -> thm list -> Proof.context -> int -> tactic
-  val PARSE_unify_resolve_context_args_tac : context_args -> resolve_mode -> thm list -> thm list ->
+  val unify_resolve_context_args_tac : context_args -> resolve_mode -> thm list -> thm list ->
     Proof.context -> int -> tactic
 
   val arg_parsers : (ML_Code_Util.code parser, ML_Code_Util.code parser, mode parser,
@@ -56,7 +56,7 @@ struct
 
 structure URB = Unify_Resolve_Base
 
-val logger = Logger.setup_new_logger URB.logger "PARSE_Unify_Resolve_Args"
+val logger = Logger.setup_new_logger URB.logger "Unify_Resolve_Args"
 
 @{parse_entries (struct) PA
   [normaliser, unifier, mode, chained, resolve_mode, rules]}
@@ -134,15 +134,15 @@ fun unify_resolve_tac args chained_facts ctxt i =
         end
   end
 
-val PARSE_unify_resolve_context_args_tac = unify_resolve_tac ooo PA_entries_from_PCA_entries
+val unify_resolve_context_args_tac = unify_resolve_tac ooo PA_entries_from_PCA_entries
 
 val arg_parsers = {
-  normaliser = SOME Unification_Parser.parse_normaliser,
+  normaliser = SOME Unification_Parser.parse_thm_normaliser,
   unifier = SOME Unification_Parser.parse_unifier,
   mode = SOME parse_mode,
   chained = SOME parse_chained_mode,
   resolve_mode = SOME parse_resolve_mode,
-  rules = SOME (Parse_Util.parse_nonempty_thms (K "must provide at least one rule to resolve"))
+  rules = SOME (Parse_Util.nonempty_thms (K "must provide at least one rule to resolve"))
 }
 
 end
@@ -174,10 +174,10 @@ sig
   val unify_resolve_tac : Unify_Resolve_Args.resolve_mode -> thm list -> thm list -> Proof.context ->
     int -> tactic
 
-  val set_args_attribute : (ML_Code_Util.code, ML_Code_Util.code, Unify_Resolve_Args.mode,
+  val attribute : (ML_Code_Util.code, ML_Code_Util.code, Unify_Resolve_Args.mode,
     Unify_Resolve_Args.chained_mode) Unify_Resolve_Args.PCA.entries * Position.T -> attribute
-  val parse_set_args_attribute : attribute parser
-  val setup_set_args_attribute : string option -> local_theory -> local_theory
+  val parse_attribute : attribute parser
+  val setup_attribute : string option -> local_theory -> local_theory
 
   val parse_method : (Proof.context -> Method.method) context_parser
   val setup_method : string option -> local_theory -> local_theory
@@ -190,9 +190,9 @@ functor Unify_Resolve(A : sig
 struct
 
 structure URA = Unify_Resolve_Args
-structure PCA = Unify_Resolve_Args.PCA
-structure PA = Unify_Resolve_Args.PA
-structure PRM = Unify_Resolve_Args.PRM
+structure PCA = URA.PCA
+structure PA = URA.PA
+structure PRM = URA.PRM
 structure FIU = Functor_Instance_Util(A.FIA)
 structure MCU = ML_Code_Util
 
@@ -218,7 +218,7 @@ val get_chained = PCA.get_chained o get_args
 val map_chained = map_args o PCA.map_chained
 
 fun unify_resolve_tac resolve_mode rules facts ctxt =
-  URA.PARSE_unify_resolve_context_args_tac (get_args (Context.Proof ctxt)) resolve_mode rules facts
+  URA.unify_resolve_context_args_tac (get_args (Context.Proof ctxt)) resolve_mode rules facts
     ctxt
 
 val binding = FIU.mk_binding_id_prefix "urule"
@@ -228,10 +228,10 @@ val parse_arg_entries =
     val parsers = URA.arg_parsers |> URA.PCA_entries_from_PA_entries
     val parse_value = PCA.parse_entry (PCA.get_normaliser parsers)
       (PCA.get_unifier parsers) (PCA.get_mode parsers) (PCA.get_chained parsers)
-    val parse_entry = Parse_Key_Value.parse_entry PCA.parse_key Parse_Util.parse_eq parse_value
+    val parse_entry = Parse_Key_Value.parse_entry PCA.parse_key Parse_Util.eq parse_value
   in PCA.parse_entries_required Parse.and_list1 [] parse_entry (PCA.empty_entries ()) end
 
-fun set_args_attribute (entries, pos) =
+fun attribute (entries, pos) =
   let
     fun URA_substructure_op substructure operation =
       MCU.flat_read ["Unify_Resolve_Args.", substructure, ".", operation]
@@ -247,29 +247,29 @@ fun set_args_attribute (entries, pos) =
     val code =
       FIU.code_struct_op "map_args" @ MCU.atomic (code_PCA_op "merge_entries" @
       MCU.atomic (code_PCA_op "entries_from_entry_list" @ code_entries))
-  in ML_Attribute.run_Kdeclaration_attribute (code, pos) end
+  in ML_Attribute.run_map_context (code, pos) end
 
-val parse_set_args_attribute = (parse_arg_entries |> Parse_Util.parse_position) >> set_args_attribute
+val parse_attribute = (parse_arg_entries |> Parse_Util.position) >> attribute
 
-val setup_set_args_attribute = Attrib.local_setup binding
-  (Parse.!!! parse_set_args_attribute |> Scan.lift) o
-  the_default ("set unify-resolution arguments (" ^ FIU.FIA.struct_name ^ ")")
+val setup_attribute = Attrib.local_setup binding
+  (Parse.!!! parse_attribute |> Scan.lift) o
+  the_default ("set unify-resolution arguments (" ^ FIU.FIA.full_name ^ ")")
 
 val parse_method =
   let val parse_resolve_mode = Scan.optional
-    (Parse.$$$ "(" |-- Parse.!!! (PA.get_resolve_mode URA.arg_parsers) --| Parse.$$$ ")")
+    (Parse_Util.parenths (PA.get_resolve_mode URA.arg_parsers |> Parse.!!!))
     (PRM.key PRM.r)
   in
     Scan.lift parse_resolve_mode
     -- PA.get_rules URA.arg_parsers
-    -- ((Parse.where_ |-- parse_set_args_attribute) |> Parse.!!! |> Parse_Util.option |> Scan.lift)
+    -- ((Parse.where_ |-- parse_attribute) |> Parse.!!! |> Parse_Util.option |> Scan.lift)
     >> (fn ((resolve_mode, rules), opt_attr) =>
-      the_default I (Option.map ML_Attribute_Util.Kproof_attribute_declaration opt_attr)
+      the_default I (Option.map ML_Attribute_Util.attribute_map_ctxt opt_attr)
       #> Method_Util.METHOD_CONTEXT' (unify_resolve_tac resolve_mode rules))
   end
 
 val setup_method = Method.local_setup binding parse_method o
   the_default ("r/e/d/f-resolve rule(s) with first subgoal; with adjustable unifier ("
-    ^ FIU.FIA.struct_name ^ ")")
+    ^ FIU.FIA.full_name ^ ")")
 
 end

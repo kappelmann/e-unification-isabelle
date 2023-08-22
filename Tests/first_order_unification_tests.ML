@@ -290,26 +290,6 @@ fun unit_tests_hints_recursive ctxt r =
     ]
   end
 
-(** disabling symmetric application of hints **)
-fun unit_tests_hints_try_symmetric ctxt r =
-  let
-    val ctxt' = Proof_Context.set_mode Proof_Context.mode_schematic ctxt
-      |> Config.put Unification_Tests_Base.Named_Theorems_Hints.UHI.get_symmetric false
-    val hints = map (Skip_Proof.make_thm (Proof_Context.theory_of ctxt') o Syntax.read_term ctxt') [
-        "?x \<equiv> ?z \<Longrightarrow> ?y \<equiv> (0 :: nat) \<Longrightarrow> ?x + ?y \<equiv> ?z"
-      ]
-    val (tests_correct, tests_incorrect) = map (apply2 (apply2 (Syntax.read_term ctxt'))) [
-        (("?x + 0 :: nat", "1 :: nat"), ("1 :: nat", "?x + 0 :: nat"))
-      ] |> split_list
-    fun check_hints should_succeed tests name =
-      check_unit_tests_hints_unif tests should_succeed hints ("no symmetric hints for " ^ name)
-  in
-    Lecker.test_group ctxt' r [
-      check_hints true tests_correct "matching problem" P.unify_hints,
-      check_hints false tests_incorrect "symmetric problem" P.unify_hints
-    ]
-  end
-
 (** multiple successful hints **)
 fun unit_tests_multiple_successful_hints ctxt r =
   let
@@ -346,7 +326,6 @@ fun unit_tests_hints ctxt r =
   Lecker.test_group ctxt r [
     unit_tests_hints_non_recursive,
     unit_tests_multiple_matching_hints,
-    unit_tests_hints_try_symmetric,
     unit_tests_hints_recursive,
     unit_tests_multiple_successful_hints
   ]

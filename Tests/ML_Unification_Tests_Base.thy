@@ -11,8 +11,17 @@ text \<open>Shared setup for unification tests.\<close>
 
 ML\<open>
   @{functor_instance struct_name = Test_Unification_Hints
-    and functor_name = Named_Theorems_Unification_Hints
-    and id = \<open>"test"\<close>}
+    and functor_name = Term_Index_Unification_Hints
+    and id = \<open>"test"\<close>
+    and more_args = \<open>
+      structure TI = Discrimination_Tree
+      val init_args = {
+        concl_unifier = SOME Higher_Order_Pattern_Unification.match,
+        normalisers = SOME (Envir_Normalisation.norm_term_unif, Envir_Normalisation.norm_thm_unif),
+        prems_unifier = SOME Higher_Order_Pattern_Unification.unify,
+        retrieval = SOME (Term_Index_Unification_Hints_Args.mk_sym_retrieval
+          TI.norm_term TI.generalisations)
+      }\<close>}
 \<close>
 
 ML_file \<open>tests_base.ML\<close>

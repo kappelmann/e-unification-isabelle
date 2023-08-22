@@ -3,21 +3,24 @@
 
 Unification hints stored in a named theorem collection (NAMED_THMS).
 *)
+@{parse_entries (sig) PARSE_NAMED_THEOREMS_UNIFICATION_HINTS_ARGS
+  [concl_unifier, normaliser, prems_unifier, try_sym, add, del, set]}
+
 signature NAMED_THEOREMS_UNIFICATION_HINTS =
 sig
   structure Hints : NAMED_THMS
   structure UHI : UNIFICATION_HINTS_INDEXED
 end
 
-functor Named_Theorems_Unification_Hints(P : sig structure FIA : FUNCTOR_INSTANCE_ARGS end)
+functor Named_Theorems_Unification_Hints(A : sig structure FIA : FUNCTOR_INSTANCE_ARGS end)
   : NAMED_THEOREMS_UNIFICATION_HINTS =
 struct
 
-structure FIU = Functor_Instance_Util(P.FIA)
+structure FIU = Functor_Instance_Util(A.FIA)
 
 structure Hints = Named_Thms(
   val name = FIU.mk_binding_id_prefix "unif_hint"
-  val description = "Unification Hints (" ^ FIU.FIA.struct_name ^ ")"
+  val description = "Unification Hints (" ^ FIU.FIA.full_name ^ ")"
 )
 val _ = Theory.setup Hints.setup
 

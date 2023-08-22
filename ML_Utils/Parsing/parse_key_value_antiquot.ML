@@ -476,12 +476,12 @@ fun mk_all struct_name optsig_name ks =
     ]
   end
 
-val parse_sig_name = Parse_Util.parse_nonempty_name (K "Signature name must not be empty.")
-val parse_struct_name = Parse_Util.parse_nonempty_name (K "Structure name must not be empty.")
+val parse_sig_name = Parse_Util.nonempty_name (K "Signature name must not be empty.")
+val parse_struct_name = Parse_Util.nonempty_name (K "Structure name must not be empty.")
 
 val parse_keys =
   let
-    val parse_key = Parse_Util.parse_nonempty_name (K "Key names must not be empty.")
+    val parse_key = Parse_Util.nonempty_name (K "Key names must not be empty.")
     val key_eq = (op =)
     fun dup_msg xs _ = Pretty.block [
         Pretty.str "All keys must be distinct. Duplicates: ",
@@ -489,7 +489,7 @@ val parse_keys =
       ] |> Pretty.string_of
   in
     Args.bracks (Parse.list1 parse_key)
-    |> Parse_Util.parse_distinct_list key_eq dup_msg
+    |> Parse_Util.distinct_list key_eq dup_msg
   end
 
 val parse_sig = parse_sig_name -- parse_keys
@@ -507,7 +507,7 @@ val parse_mode = Parse_Key_Value.parse_key ["sig", "struct", "all"] mode_of_stri
 
 val parse =
   let
-    val parse_mode = Scan.optional (Parse.$$$ "(" |-- Parse.!!! parse_mode --| Parse.$$$ ")") ALL
+    val parse_mode = Scan.optional (Parse_Util.parenths (Parse.!!! parse_mode)) ALL
     fun parse_of_mode SIG = parse_sig >> uncurry mk_signature
       | parse_of_mode STRUCT = parse_struct
           >> (fn ((struct_name, optsig_name), ks) => mk_structure struct_name optsig_name ks)

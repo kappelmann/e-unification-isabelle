@@ -4,8 +4,7 @@ theory Unify_Assumption_Tactic
   imports
     ML_Functor_Instances
     ML_Unifiers
-    Logging.ML_Attributes
-    Unification_Parsers
+    ML_Unification_Parsers
 begin
 
 ML_file\<open>unify_assumption_base.ML\<close>
@@ -20,7 +19,7 @@ ML\<open>
       unifier = SOME Mixed_Unification.first_higherp_comb_higher_unify
     }\<close>}
 \<close>
-local_setup \<open>Standard_Unify_Assumption.setup_set_args_attribute NONE\<close>
+local_setup \<open>Standard_Unify_Assumption.setup_attribute NONE\<close>
 local_setup \<open>Standard_Unify_Assumption.setup_method NONE\<close>
 
 experiment

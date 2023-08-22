@@ -74,10 +74,10 @@ val unify_OF_attribute = gen_unify_of Unify_OF_Base.unify_OF_attribute
 val unify_OF_context_args_attribute = unify_OF_attribute oo PA_entries_from_PCA_entries
 
 val arg_parsers = {
-  normaliser = SOME Unification_Parser.parse_normaliser,
+  normaliser = SOME Unification_Parser.parse_thm_normaliser,
   unifier = SOME Unification_Parser.parse_unifier,
   mode = SOME parse_mode,
-  rules = SOME Parse_Util.parse_thms
+  rules = SOME Parse_Util.thms
 }
 
 end
@@ -155,7 +155,7 @@ val parse_arg_entries =
     val parsers = UOA.arg_parsers |> UOA.PCA_entries_from_PA_entries
     val parse_value = PCA.parse_entry (PCA.get_normaliser parsers)
       (PCA.get_unifier parsers) (PCA.get_mode parsers)
-    val parse_entry = Parse_Key_Value.parse_entry PCA.parse_key Parse_Util.parse_eq parse_value
+    val parse_entry = Parse_Key_Value.parse_entry PCA.parse_key Parse_Util.eq parse_value
   in PCA.parse_entries_required Parse.and_list1 [] parse_entry (PCA.empty_entries ()) end
 
 fun set_args_attribute (entries, pos) =
@@ -173,10 +173,9 @@ fun set_args_attribute (entries, pos) =
     val code =
       FIU.code_struct_op "map_args" @ MCU.atomic (code_PCA_op "merge_entries" @
       MCU.atomic (code_PCA_op "entries_from_entry_list" @ code_entries))
-  in ML_Attribute.run_Kdeclaration_attribute (code, pos) end
+  in ML_Attribute.run_map_context (code, pos) end
 
-val parse_set_args_attribute = (parse_arg_entries |> Parse_Util.parse_position)
-  >> set_args_attribute
+val parse_set_args_attribute = (parse_arg_entries |> Parse_Util.position) >> set_args_attribute
 
 val parse_attribute =
   PA.get_rules UOA.arg_parsers
@@ -186,10 +185,10 @@ val parse_attribute =
   >> (fn ([], SOME attr) => attr
   (*otherwise, we use the arguments but do not store them in the context*)
     | (rules, opt_attr) =>
-        apfst (the_default I (Option.map ML_Attribute_Util.Kattribute_declaration opt_attr))
+        apfst (the_default I (Option.map ML_Attribute_Util.attribute_map_context opt_attr))
         #> unify_OF_attribute rules)
 
 val setup_attribute = Attrib.local_setup binding parse_attribute o
-  the_default ("apply theorem to arguments (" ^ FIU.FIA.struct_name ^ ")")
+  the_default ("apply theorem to arguments (" ^ FIU.FIA.full_name ^ ")")
 
 end

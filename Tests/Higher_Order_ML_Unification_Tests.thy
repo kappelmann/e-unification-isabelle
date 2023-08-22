@@ -2,7 +2,7 @@
 section \<open>Higher-Order ML Unification Tests\<close>
 theory Higher_Order_ML_Unification_Tests
   imports
-    ML_Unification_Tests_Base
+    Higher_Order_Pattern_ML_Unification_Tests
 begin
 
 paragraph \<open>Summary\<close>
@@ -21,23 +21,12 @@ subsubsection \<open>Generated Tests\<close>
 paragraph \<open>First Order\<close>
 
 ML_command\<open>
-  structure HOP = Higher_Order_Pattern_Unification
   structure Test_Params =
   struct
     val unify = unify
     (*TODO: there is no higher-order unification with hints as of now;
-      we hence use the higher-order pattern hints unifier for those tests*)
-    val unify_hints =
-      let fun unif binders =
-        Unification_Combinator.add_fallback_unifier
-        (HOP.e_unify Unification_Util.unify_types)
-        (Unification_Hints.try_hints (Named_Theorems_Hints.UHI.get_hints)
-          Higher_Order_Pattern_Unification.match
-          HOP.norm_term_unify HOP.norm_thm_unify unif
-          |> Unification_Combinator.norm_unifier HOP.norm_term_unify)
-        binders
-      in unif [] end
-
+      we hence use the higher-order pattern hint unifier for those tests*)
+    val unify_hints = unify_hints
     val params = {
       nv = 10,
       ni = 10,

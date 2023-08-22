@@ -1,123 +1,125 @@
 (*  Title:      ML_Unification/unification_hints.ML
-    Author:     Kevin Kappelmann, Paul Bachmann
+    Author:     Kevin Kappelmann
 
-Unification hints as introduced in "Hints in unification" by Asperti et al, 2009.
+Unification hints with arguments from context.
 *)
-signature UNIFICATION_HINTS =
+@{parse_entries (sig) PARSE_UNIFICATION_HINTS_ARGS
+  [concl_unifier, normalisers, prems_unifier]}
+
+signature UNIFICATION_HINTS_ARGS =
 sig
-  include HAS_LOGGER
+  structure PA : PARSE_UNIFICATION_HINTS_ARGS
 
-  type unif_hint = thm
-  val cdest_hint : unif_hint -> (cterm * cterm) list * (cterm * cterm)
-  val cdest_hint_concl : unif_hint -> cterm * cterm
-  val symmetric_hint : unif_hint -> unif_hint
-  val pretty_hint : Proof.context -> unif_hint -> Pretty.T
+  type args = (Unification_Base.unifier,
+    (Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser),
+    Unification_Base.unifier) PA.entries
 
-  val try_hint : Unification_Base.matcher -> Envir_Normalisation.term_normaliser ->
-    Envir_Normalisation.thm_normaliser -> unif_hint -> Unification_Base.e_unifier
+  val try_hints : args -> Unification_Hints_Base.hint_retrieval -> Unification_Base.unifier
 
-  val try_hints : (Proof.context -> term * term -> unif_hint Seq.seq) ->
-    Unification_Base.matcher -> Envir_Normalisation.term_normaliser ->
-    Envir_Normalisation.thm_normaliser -> Unification_Base.e_unifier
+  val arg_parsers : (ML_Code_Util.code parser, ML_Code_Util.code parser, ML_Code_Util.code parser)
+    PA.entries
 end
 
-structure Unification_Hints : UNIFICATION_HINTS =
+structure Unification_Hints_Args : UNIFICATION_HINTS_ARGS =
 struct
 
-val logger = Logger.setup_new_logger Unification_Base.logger "Unification_Hints"
+structure UB = Unification_Base
+structure EN = Envir_Normalisation
+structure UHB = Unification_Hints_Base
 
-structure GUtil = General_Util
-structure TUtil = Term_Util
-structure CUtil = Conversion_Util
+@{parse_entries (struct) PA
+  [concl_unifier, normalisers, prems_unifier]}
 
-type unif_hint = thm
+type args = (UB.unifier, (EN.term_normaliser * EN.thm_normaliser), UB.unifier) PA.entries
 
-val cdest_hint = Thm.cprop_of #> TUtil.strip_cimp #>> map Thm.dest_equals ##> Thm.dest_equals
-val cdest_hint_concl = Thm.cconcl_of #> Thm.dest_equals
-
-(*only flips the conclusion since unification calls for the premises should be symmetric*)
-val symmetric_hint = Conv.concl_conv ~1 CUtil.symmetric_conv |> CUtil.thm_conv
-val pretty_hint = Thm.pretty_thm
-
-(*Tries to apply a hint to solve E-unification of (t1 \<equiv>? t2).
-  Vars in hint are lifted wrt. the passed binders.
-  Unifies the hint's conclusion with (t1, t2) using match.
-  Unifies resulting unification problems using unify.
-  Normalises the terms and theorems after unify with norm_thm_unif.
-  Returns a sequence of (env, thm) pairs.
-  Precondition: binders, t1, t2 are normalised wrt. the passed environment*)
-fun try_hint match norm_term_unif norm_thm_unif hint unify binders ctxt (t1, t2)
-  (Envir.Envir {maxidx, tenv, tyenv}) =
-  let
-    val dest_all_equals = TUtil.strip_all ##> Logic.dest_equals
-    val rev_binders = rev binders
-    val _ = @{log Logger.TRACE} ctxt (fn _ => Pretty.block [
-        Pretty.str "Trying hint: ", pretty_hint ctxt hint
-      ] |> Pretty.string_of)
-    (*lift hint to include bound variables and increase indexes*)
-    val lifted_hint =
-      (*"P" is just some dummy proposition variable with appropriate index*)
-      Logic.list_all (map fst rev_binders, Var (("P", maxidx + 1), propT))
-      |> Thm.cterm_of ctxt
-      (*lift bound variables to the hint*)
-      |> GUtil.flip Thm.lift_rule hint
-    val (hint_prems, hint_concl) = Thm.prop_of lifted_hint |> TUtil.strip_subgoal |> snd
-
-    (*match hint with unification pair*)
-    val (P, Q) = dest_all_equals hint_concl |> snd
-    val match = match binders ctxt
-    val (no_hint_match, match_env_concl_thmpq) =
-      Envir.Envir {maxidx = Thm.maxidx_of lifted_hint, tenv = tenv, tyenv = tyenv}
-      |> match (P, t1)
-      |> Seq.maps (fn (env, thm1) => match (Q, t2) env |> Seq.map (apsnd (pair thm1)))
-      |> GUtil.seq_is_empty
+fun try_hints args retrieval =
+  let val (norm_term, norm_thm) = PA.get_normalisers args
   in
-    if no_hint_match then (@{log Logger.TRACE} ctxt (K "Hint does not match."); Seq.empty)
-    else
-      let
-        val _ = @{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
-            Pretty.str "Hint ",
-            pretty_hint ctxt hint,
-            Pretty.str " matched. Unifying premises..."
-          ] |> Pretty.string_of)
-        (*unify each hint premise and collect the theorems while iteratively extending the environment*)
-        fun unif_prem prem =
-          let
-            val (params, PQ_prem) = dest_all_equals prem
-            val (binders, ctxt) = Binders.fix_binders params ctxt
-            fun unif_add_result (env, thms) = unify binders ctxt PQ_prem env
-              |> Seq.map (apsnd (fn thm => (binders, thm) :: thms))
-          in Seq.maps unif_add_result end
-        fun unify_prems (match_env, concl_thmp) =
-          fold unif_prem hint_prems (Seq.single (match_env, []))
-          |> Seq.map (rpair concl_thmp)
-        fun inst_discharge ((env_res, prem_thms), concl_thmp) =
-          let
-            (*instantiate the theorems*)
-            val norm_thm_unif = norm_thm_unif ctxt env_res
-            val lifted_hint_inst = norm_thm_unif lifted_hint
-            val norm_term_unif = norm_term_unif env_res
-            val mk_norm_cbinders = map (Thm.cterm_of ctxt o norm_term_unif o snd)
-            fun forall_intr binders = fold Thm.forall_intr (mk_norm_cbinders binders) o norm_thm_unif
-            val prem_thms_inst = map (uncurry forall_intr) prem_thms |> rev
-            val (concl_thmL, concl_thmR) = apply2 norm_thm_unif concl_thmp
-            (*discharge the hint premises*)
-            val thm_res = Thm_Util.implies_elim_list_beta_eta_short lifted_hint_inst prem_thms_inst
-              |> Drule.forall_elim_list (mk_norm_cbinders rev_binders)
-              |> GUtil.flip Thm_Util.transitive_beta_eta_short concl_thmR
-              |> Thm_Util.transitive_beta_eta_short (Unification_Base.symmetric concl_thmL)
-          in (env_res, thm_res) end
-      in Seq.maps unify_prems match_env_concl_thmpq |> Seq.map inst_discharge end
+    UHB.try_hints retrieval (PA.get_concl_unifier args) norm_term norm_thm
+      (PA.get_prems_unifier args)
   end
 
-fun try_hints get_hints match norm_term_unif norm_thm_unif unif binders ctxt (t1, t2) env =
-  (@{log Logger.DEBUG} ctxt (fn _ =>
-    Pretty.block [
-      Pretty.str "Trying unification hints for ",
-      Unification_Util.pretty_unif_problem ctxt (t1, t2)
-    ] |> Pretty.string_of);
-  get_hints ctxt (t1, t2)
-  |> Seq.maps (fn hint => try_hint match norm_term_unif norm_thm_unif
-    hint unif binders ctxt (t1, t2) env))
+val arg_parsers = {
+  concl_unifier = SOME Unification_Parser.parse_unifier,
+  normalisers = SOME (Parse_Util.nonempty_code (K "normalisers must not be empty")),
+  prems_unifier = SOME Unification_Parser.parse_unifier
+}
+
+end
+
+signature UNIFICATION_HINTS =
+sig
+  structure Data : GENERIC_DATA
+
+  val get_args : Context.generic -> Unification_Hints_Args.args
+  val map_args : (Unification_Hints_Args.args -> Unification_Hints_Args.args) ->
+    Context.generic -> Context.generic
+
+  val get_concl_unifier : Context.generic -> Unification_Base.unifier
+  val map_concl_unifier : (Unification_Base.unifier -> Unification_Base.unifier) ->
+    Context.generic -> Context.generic
+
+  val get_normalisers : Context.generic ->
+    Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser
+  val map_normalisers : (Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser ->
+    Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser) ->
+    Context.generic -> Context.generic
+
+  val get_prems_unifier : Context.generic -> Unification_Base.unifier
+  val map_prems_unifier : (Unification_Base.unifier -> Unification_Base.unifier) ->
+    Context.generic -> Context.generic
+
+  val try_hints : Unification_Hints_Base.hint_retrieval -> Unification_Base.unifier
+
+  val attribute : (ML_Code_Util.code, ML_Code_Util.code, ML_Code_Util.code)
+    Unification_Hints_Args.PA.entries * Position.T -> attribute
+end
+
+functor Unification_Hints(A : sig
+    structure FIA : FUNCTOR_INSTANCE_ARGS
+    val init_args : Unification_Hints_Args.args
+  end) : UNIFICATION_HINTS =
+struct
+
+structure UHA = Unification_Hints_Args
+structure PA = UHA.PA
+structure FIU = Functor_Instance_Util(A.FIA)
+structure MCU = ML_Code_Util
+
+structure Data = Generic_Data(struct
+  type T = UHA.args
+  val empty = A.init_args
+  val merge = fst
+end)
+
+val get_args = Data.get
+val map_args = Data.map
+
+val get_concl_unifier = PA.get_concl_unifier o get_args
+val map_concl_unifier = map_args o PA.map_concl_unifier
+
+val get_normalisers = PA.get_normalisers o get_args
+val map_normalisers = map_args o PA.map_normalisers
+
+val get_prems_unifier = PA.get_prems_unifier o get_args
+val map_prems_unifier = map_args o PA.map_prems_unifier
+
+fun try_hints retrieval binders ctxt  =
+  UHA.try_hints (get_args (Context.Proof ctxt)) retrieval binders ctxt
+
+fun attribute (entries, pos) =
+  let
+    fun code_PA_op operation = MCU.flat_read ["Unification_Hints_Args.PA.", operation]
+    val code_from_key = code_PA_op o PA.key_to_string
+    fun code_from_entry (PA.concl_unifier c) = c
+      | code_from_entry (PA.normalisers c) = c
+      | code_from_entry (PA.prems_unifier c) = c
+    val code_entries = PA.key_entry_entries_from_entries entries
+      |> map (fn (k, v) => code_from_key k @ MCU.atomic (code_from_entry v))
+      |> MCU.list
+    val code =
+      FIU.code_struct_op "map_args" @ MCU.atomic (code_PA_op "merge_entries" @
+      MCU.atomic (code_PA_op "entries_from_entry_list" @ code_entries))
+  in ML_Attribute.run_map_context (code, pos) end
 
 end

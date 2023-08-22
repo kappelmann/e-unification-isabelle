@@ -48,9 +48,9 @@ fun unify_fact_tac args =
 val unify_fact_context_args_tac = unify_fact_tac oo PA_entries_from_PCA_entries
 
 val arg_parsers = {
-  normaliser = SOME Unification_Parser.parse_normaliser,
+  normaliser = SOME Unification_Parser.parse_thm_normaliser,
   unifier = SOME Unification_Parser.parse_unifier,
-  facts = SOME Parse_Util.parse_thms
+  facts = SOME Parse_Util.thms
 }
 
 end
@@ -73,10 +73,10 @@ sig
 
   val unify_fact_tac : thm list -> Proof.context -> int -> tactic
 
-  val set_args_attribute : (ML_Code_Util.code, ML_Code_Util.code) Unify_Fact_Args.PCA.entries *
+  val attribute : (ML_Code_Util.code, ML_Code_Util.code) Unify_Fact_Args.PCA.entries *
     Position.T -> attribute
-  val parse_set_args_attribute : attribute parser
-  val setup_set_args_attribute : string option -> local_theory -> local_theory
+  val parse_attribute : attribute parser
+  val setup_attribute : string option -> local_theory -> local_theory
 
   val parse_method : (Proof.context -> Method.method) context_parser
   val setup_method : string option -> local_theory -> local_theory
@@ -89,8 +89,8 @@ functor Unify_Fact(A : sig
 struct
 
 structure UFA = Unify_Fact_Args
-structure PCA = Unify_Fact_Args.PCA
-structure PA = Unify_Fact_Args.PA
+structure PCA = UFA.PCA
+structure PA = UFA.PA
 
 structure FIU = Functor_Instance_Util(A.FIA)
 structure MCU = ML_Code_Util
@@ -119,10 +119,10 @@ val parse_arg_entries =
   let
     val parsers = UFA.arg_parsers |> UFA.PCA_entries_from_PA_entries
     val parse_value = PCA.parse_entry (PCA.get_normaliser parsers) (PCA.get_unifier parsers)
-    val parse_entry = Parse_Key_Value.parse_entry PCA.parse_key Parse_Util.parse_eq parse_value
-  in PCA.parse_entries_required Parse.and_list1 [] parse_entry (PCA.empty_entries ()) end
+    val parse_entry = Parse_Key_Value.parse_entry PCA.parse_key Parse_Util.eq parse_value
+  in PCA.parse_entries_required Parse.and_list1 [PCA.key PCA.unifier] parse_entry (PCA.empty_entries ()) end
 
-fun set_args_attribute (entries, pos) =
+fun attribute (entries, pos) =
   let
     fun code_PCA_op operation = MCU.flat_read ["Unify_Fact_Args.PCA.", operation]
     val code_from_key = code_PCA_op o PCA.key_to_string
@@ -133,23 +133,23 @@ fun set_args_attribute (entries, pos) =
       |> MCU.list
     val code = FIU.code_struct_op "map_args" @ MCU.atomic (code_PCA_op "merge_entries" @
       MCU.atomic (code_PCA_op "entries_from_entry_list" @ code_entries))
-  in ML_Attribute.run_Kdeclaration_attribute (code, pos) end
+  in ML_Attribute.run_map_context (code, pos) end
 
-val parse_set_args_attribute = (parse_arg_entries |> Parse_Util.parse_position) >> set_args_attribute
+val parse_attribute = (parse_arg_entries |> Parse_Util.position) >> attribute
 
-val setup_set_args_attribute = Attrib.local_setup binding
-  (Parse.!!! parse_set_args_attribute |> Scan.lift) o
-  the_default ("set unify-fact arguments (" ^ FIU.FIA.struct_name ^ ")")
+val setup_attribute = Attrib.local_setup binding
+  (Parse.!!! parse_attribute |> Scan.lift) o
+  the_default ("set unify-fact arguments (" ^ FIU.FIA.full_name ^ ")")
 
 val parse_method =
   PA.get_facts UFA.arg_parsers
-  -- ((Parse.where_ |-- parse_set_args_attribute) |> Parse.!!! |> Parse_Util.option |> Scan.lift)
+  -- ((Parse.where_ |-- parse_attribute) |> Parse.!!! |> Parse_Util.option |> Scan.lift)
   >> (fn (facts, opt_attr) =>
-    the_default I (Option.map ML_Attribute_Util.Kproof_attribute_declaration opt_attr)
+    the_default I (Option.map ML_Attribute_Util.attribute_map_ctxt opt_attr)
     #> Method_Util.METHOD_CONTEXT' (append facts #> unify_fact_tac))
 
 val setup_method = Method.local_setup binding parse_method o
   the_default ("solve first subgoal by unification with a given fact; with adjustable unifier ("
-    ^ FIU.FIA.struct_name ^ ")")
+    ^ FIU.FIA.full_name ^ ")")
 
 end

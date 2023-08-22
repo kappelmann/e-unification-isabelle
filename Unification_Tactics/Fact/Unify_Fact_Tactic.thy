@@ -16,7 +16,7 @@ ML\<open>
       unifier = SOME Mixed_Unification.first_higherp_comb_higher_unify
     }\<close>}
 \<close>
-local_setup \<open>Standard_Unify_Fact.setup_set_args_attribute NONE\<close>
+local_setup \<open>Standard_Unify_Fact.setup_attribute NONE\<close>
 local_setup \<open>Standard_Unify_Fact.setup_method NONE\<close>
 
 experiment

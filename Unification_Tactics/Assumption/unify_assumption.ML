@@ -26,7 +26,7 @@ fun unify_assumption_tac args ctxt =
   Unify_Assumption_Base.unify_assumption_tac (PA.get_normaliser args) (PA.get_unifier args) ctxt
 
 val arg_parsers = {
-  normaliser = SOME Unification_Parser.parse_normaliser,
+  normaliser = SOME Unification_Parser.parse_thm_normaliser,
   unifier = SOME Unification_Parser.parse_unifier
 }
 
@@ -50,10 +50,10 @@ sig
 
   val unify_assumption_tac : Proof.context -> int -> tactic
 
-  val set_args_attribute : (ML_Code_Util.code, ML_Code_Util.code) Unify_Assumption_Args.PA.entries *
+  val attribute : (ML_Code_Util.code, ML_Code_Util.code) Unify_Assumption_Args.PA.entries *
     Position.T -> attribute
-  val parse_set_args_attribute : attribute parser
-  val setup_set_args_attribute : string option -> local_theory -> local_theory
+  val parse_attribute : attribute parser
+  val setup_attribute : string option -> local_theory -> local_theory
 
   val parse_method : (Proof.context -> Method.method) context_parser
   val setup_method : string option -> local_theory -> local_theory
@@ -66,7 +66,7 @@ functor Unify_Assumption(A : sig
 struct
 
 structure UAA = Unify_Assumption_Args
-structure PA = Unify_Assumption_Args.PA
+structure PA = UAA.PA
 
 structure FIU = Functor_Instance_Util(A.FIA)
 structure MCU = ML_Code_Util
@@ -94,10 +94,10 @@ val parse_arg_entries =
   let
     val parse_value = PA.parse_entry (PA.get_normaliser UAA.arg_parsers)
       (PA.get_unifier UAA.arg_parsers)
-    val parse_entry = Parse_Key_Value.parse_entry PA.parse_key Parse_Util.parse_eq parse_value
+    val parse_entry = Parse_Key_Value.parse_entry PA.parse_key Parse_Util.eq parse_value
   in PA.parse_entries_required Parse.and_list1 [] parse_entry (PA.empty_entries ()) end
 
-fun set_args_attribute (entries, pos) =
+fun attribute (entries, pos) =
   let
     fun code_PA_op operation = MCU.flat_read ["Unify_Assumption_Args.PA.", operation]
     val code_from_key = code_PA_op o PA.key_to_string
@@ -108,23 +108,23 @@ fun set_args_attribute (entries, pos) =
       |> MCU.list
     val code = FIU.code_struct_op "map_args" @ MCU.atomic (code_PA_op "merge_entries" @
       MCU.atomic (code_PA_op "entries_from_entry_list" @ code_entries))
-  in ML_Attribute.run_Kdeclaration_attribute (code, pos) end
+  in ML_Attribute.run_map_context (code, pos) end
 
-val parse_set_args_attribute = (parse_arg_entries |> Parse_Util.parse_position) >> set_args_attribute
+val parse_attribute = (parse_arg_entries |> Parse_Util.position) >> attribute
 
-val setup_set_args_attribute = Attrib.local_setup binding
-  (Parse.!!! parse_set_args_attribute |> Scan.lift) o
-  the_default ("set unify-assumption arguments (" ^ FIU.FIA.struct_name ^ ")")
+val setup_attribute = Attrib.local_setup binding
+  (Parse.!!! parse_attribute |> Scan.lift) o
+  the_default ("set unify-assumption arguments (" ^ FIU.FIA.full_name ^ ")")
 
 val parse_method =
-  Parse_Util.option (Parse.!!! parse_set_args_attribute)
+  Parse_Util.option (Parse.!!! parse_attribute)
   >> (fn opt_attr =>
-    the_default I (Option.map ML_Attribute_Util.Kproof_attribute_declaration opt_attr)
+    the_default I (Option.map ML_Attribute_Util.attribute_map_ctxt opt_attr)
     #> SIMPLE_METHOD' o unify_assumption_tac)
   |> Scan.lift
 
 val setup_method = Method.local_setup binding parse_method o
   the_default ("solve first subgoal by assumption; with adjustable unifier ("
-    ^ FIU.FIA.struct_name ^ ")")
+    ^ FIU.FIA.full_name ^ ")")
 
 end

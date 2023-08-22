@@ -18,9 +18,8 @@ ML\<open>
       chained = SOME (Unify_Resolve_Args.PCM.key Unify_Resolve_Args.PCM.resolve)
     }\<close>}
 \<close>
-local_setup \<open>Standard_Unify_Resolve.setup_set_args_attribute NONE\<close>
+local_setup \<open>Standard_Unify_Resolve.setup_attribute NONE\<close>
 local_setup \<open>Standard_Unify_Resolve.setup_method NONE\<close>
-
 
 experiment
 begin
@@ -69,7 +68,7 @@ lemma
   assumes h1: "PROP A \<Longrightarrow> PROP B"
   and h2 : "(PROP A \<Longrightarrow> PROP B) \<Longrightarrow> PROP C"
   shows "PROP D \<Longrightarrow> PROP C"
-  (* using h1 apply (urule h2 where chained = fact) *)
+  using h1 apply (urule h2 where chained = fact)
   (* using h1 apply (urule h2 where chained = resolve) *)
   (* using h1 apply (urule h2 where chained = insert) *)
   oops

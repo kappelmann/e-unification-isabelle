@@ -6,7 +6,6 @@ theory ML_Unification_Hints_Examples
     Complex_Main
     ML_Unification.ML_Unification_Hints
     ML_Unification.Unify_Fact_Tactic
-    Logging.ML_Attributes
 begin
 
 paragraph \<open>Summary\<close>
@@ -15,13 +14,11 @@ text \<open>Sample applications for unification hints.\<close>
 ML\<open>
   val read_term_pattern = Proof_Context.read_term_pattern
   structure Util = Unification_Util
-
   (* @{functor_instance struct_name = Exmpl_Unification_Hints
       and functor_name = Named_Theorems_Unification_Hints
       and id = \<open>"exmpl"\<close>} *)
-
   val unify = Mixed_Unification.first_higherp_comb_higher_unify
-    (* Exmpl_Unification_Hints.UHI.get_hints *)
+  structure UHPrio = Term_Index_Unification_Hints_Prio
 \<close>
 
 experiment
@@ -42,12 +39,29 @@ where
 | "interp (Neg f) vs \<longleftrightarrow> \<not> interp f vs"
 | "interp (ExQ f) vs \<longleftrightarrow> (\<exists>v. interp f (v # vs))"
 
-lemma [unif_hint]:
-  "n \<equiv> Suc n' \<Longrightarrow> vs \<equiv> v # vs' \<Longrightarrow> vs' ! n' \<equiv> x \<Longrightarrow> vs ! n \<equiv> x"
-  "n \<equiv> 0 \<Longrightarrow> vs \<equiv> x # vs' \<Longrightarrow> vs ! n \<equiv> x"
-  by simp_all
+lemma [unif_hint where prio = UHPrio.LOW]:
+  "vs' ! n \<equiv> x \<Longrightarrow> (v # vs') ! Suc n \<equiv> x"
+  by simp
 
-lemma [unif_hint]:
+lemma [unif_hint]: "(x # vs') ! 0 \<equiv> x"
+  by simp
+
+lemma eq_eq_meta_eq: "Trueprop (x = y) \<equiv> (x \<equiv> y)"
+  by rule simp_all
+
+declare interp.simps[simplified eq_eq_meta_eq, unif_hint]
+
+declare [[unif_hint
+  where concl_unifier = Mixed_Unification.first_higherp_comb_higher_unify
+  and retrieval = \<open>Standard_Unification_Hints.mk_sym_retrieval
+    Standard_Unification_Hints.TI.unifiables\<close>]]
+
+(* declare [[ML_map_context \<open>Logger.set_log_levels Logger.root_logger 10000\<close>]] *)
+schematic_goal
+  "interp ?f (?vs :: ('a :: ord) list) = (\<exists>(x :: 'a). x < y \<and> \<not>(\<exists>z. x < z \<or> False))"
+  by (urule refl)
+
+(* lemma [unif_hint]:
   "\<lbrakk>e \<equiv> ExQ f; \<And>v. interp f (v # vs) \<equiv> P v\<rbrakk> \<Longrightarrow> interp e vs \<equiv> \<exists>v. P v"
   "\<lbrakk>e \<equiv> Less i j; x \<equiv> vs ! i; y \<equiv> vs ! j\<rbrakk> \<Longrightarrow> interp e vs \<equiv> x < y"
   "\<lbrakk>e \<equiv> And f1 f2; interp f1 vs \<equiv> r1; interp f2 vs \<equiv> r2\<rbrakk> \<Longrightarrow> interp e vs \<equiv> r1 \<and> r2"
@@ -55,10 +69,10 @@ lemma [unif_hint]:
   "e \<equiv> Neg f \<Longrightarrow> interp f vs \<equiv> r \<Longrightarrow> interp e vs \<equiv> \<not>r"
   "e \<equiv> TrueF \<Longrightarrow> interp e vs \<equiv> True"
   "e \<equiv> FalseF \<Longrightarrow> interp e vs \<equiv> False"
-  by simp_all
+  by simp_all *)
 
-schematic_goal "interp ?f (?vs :: ('a :: ord) list) = (\<exists>(x :: 'a). x < y \<and> \<not>(\<exists>z. x < z))"
-  by (urule refl)
+(* schematic_goal "interp ?f (?vs :: ('a :: ord) list) = (\<exists>(x :: 'a). x < y \<and> \<not>(\<exists>z. x < z))"
+  by (urule refl) *)
 
 subsubsection \<open>Simple Arithmetic\<close>
 datatype add_expr = Var int | Add add_expr add_expr
@@ -97,12 +111,12 @@ fun eval_mul_expr :: "mul_expr \<times> real list \<Rightarrow> real" where
 | "eval_mul_expr (Inv e, \<Gamma>) = inverse (eval_mul_expr (e, \<Gamma>))"
 
 (*initial hint to split e into an expression and an environment*)
-lemma eval_mul_expr_split [unif_hint]:
+lemma eval_mul_expr_split [unif_hint where prio = UHPrio.LOW]:
   "e \<equiv> (e1, \<Gamma>) \<Longrightarrow> n \<equiv> eval_mul_expr (e1, \<Gamma>) \<Longrightarrow> eval_mul_expr e \<equiv> n"
   by simp
 
 (*hints for environment lookup*)
-lemma eval_mul_expr_Var_Suc [unif_hint]:
+lemma eval_mul_expr_Var_Suc [unif_hint where prio = UHPrio.LOW]:
   "e \<equiv> Var (Suc p) \<Longrightarrow> \<Gamma> \<equiv> s # \<Delta> \<Longrightarrow> n \<equiv> eval_mul_expr (Var p, \<Delta>) \<Longrightarrow> eval_mul_expr (e, \<Gamma>) \<equiv> n"
   by simp
 
@@ -129,25 +143,23 @@ schematic_goal "eval_mul_expr ?e \<equiv> 1 * inverse 3 * 5 :: real"
   by (urule reflexive)
 
 lemma "1000 * 3 - 2 + 2 = (3000 :: nat)"
-  using eval_nat_numeral[simp]
-  by - (urule refl)
+  supply eval_nat_numeral[simp]
+  by (urule refl)
   (* by simp *)
 
 lemma
   assumes "[a,b,c] = [c,b,a]"
   shows "[a] @ [b,c] = [c,b,a]"
   using assms by uassm
-  (* using assms by simp *)
 
-(* lemma [unif_hint]: "x^2 + 2*x*y + y^2 \<equiv> z \<Longrightarrow> (x + y)^2 \<equiv> z" *)
-
-(* lemma "(x^2 + (x :: nat))^2 \<le> 16 * x^4" *)
-  (* by simp *)
+lemma "(x + (y :: nat))^2 \<le> x^2 + 2*x*y + y^2"
+  using field_simps[simp] power2_sum[simp]
+  by (ufact order.refl)
 
 (* declare [[ML_Kdattr \<open>Logger.set_log_levels Logger.root_logger Logger.DEBUG\<close>]] *)
 
 lemma [unif_hint]: "xs \<equiv> [] \<Longrightarrow> length xs \<equiv> 0" by simp
-lemma [unif_hint]: "z \<equiv> 0 \<Longrightarrow> x \<equiv> (0 :: nat) \<Longrightarrow> y \<equiv> 0 \<Longrightarrow> x + y \<equiv> z" by simp
+lemma [unif_hint]: "(z :: nat) \<equiv> 0 \<Longrightarrow> x \<equiv> 0 \<Longrightarrow> y \<equiv> 0 \<Longrightarrow> x + y \<equiv> z" by simp
 
 schematic_goal "length ?xs = 0 + length ?ys + (1 - 1)"
   by (urule refl)

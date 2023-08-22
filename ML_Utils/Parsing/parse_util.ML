@@ -1,4 +1,4 @@
-(*  Title:      ML_Utils/parse_util.ML
+(*  Title:      ML_Utils/util.ML
     Author:     Kevin Kappelmann
 
 Parsing utilities.
@@ -6,6 +6,11 @@ Parsing utilities.
 signature PARSE_UTIL =
 sig
   val !!!+ : 'a context_parser -> 'a context_parser
+
+  val enum1' : string -> 'a context_parser -> 'a list context_parser
+  val enum' : string -> 'a context_parser -> 'a list context_parser
+  val and_list1' : 'a context_parser -> 'a list context_parser
+  val and_list' : 'a context_parser -> 'a list context_parser
 
   (*indexed state monad (generalising parsers and context parsers)*)
   type ('i, 'j, 'a) istate = 'i -> 'a * 'j
@@ -21,44 +26,47 @@ sig
 
   val option : 'a parser -> ('a option) parser
   val option' : 'a context_parser -> ('a option) context_parser
+  val optional : 'a parser -> 'a -> 'a parser
+  val optional' : 'a context_parser -> 'a -> 'a context_parser
 
-  val parse_position : 'a parser -> ('a * Position.T) parser
-  val parse_position' : 'a context_parser -> ('a * Position.T) context_parser
+  val position : 'a parser -> ('a * Position.T) parser
+  val position' : 'a context_parser -> ('a * Position.T) context_parser
 
   val fail : ('a -> string) -> 'a -> 'b
   (*scanner raising Scan.ABORT with given error message*)
   val abort : (Token.T list -> string) -> 'a parser
   val abort' : (Context.generic * Token.T list -> string) -> 'a context_parser
 
-  (*filter_parser f c p runs parser p to obtain result x and returns x if f x holds and c x otherwise*)
-  val filter_parser : ('a -> bool) -> ('a -> ('b, 'b, 'a) istate) -> ('c, 'b, 'a) istate ->
+  (*filter f err p runs parser p to obtain result x and returns x if f x holds and err x otherwise*)
+  val filter : ('a -> bool) -> ('a -> ('b, 'b, 'a) istate) -> ('c, 'b, 'a) istate ->
     ('c, 'b, 'a) istate
-  val filter_parser_cut : ('a -> bool) -> ('a -> Token.T list -> string) -> 'a parser -> 'a parser
-  val filter_parser_cut' : ('a -> bool) -> ('a -> Context.generic * Token.T list -> string) ->
+  (*filter with cuts in case of failure*)
+  val filter_cut : ('a -> bool) -> ('a -> Token.T list -> string) -> 'a parser -> 'a parser
+  val filter_cut' : ('a -> bool) -> ('a -> Context.generic * Token.T list -> string) ->
     'a context_parser -> 'a context_parser
 
-  val parse_nonempty_list : (Token.T list -> string) -> ('a list) parser -> ('a list) parser
-  val parse_nonempty_list' : (Context.generic * Token.T list -> string) ->
-    ('a list) context_parser -> ('a list) context_parser
+  val nonempty_list : ('b -> string) -> ('a, 'b, 'c list) istate -> ('a, 'b, 'c list) istate
+  val distinct_list : ('a * 'a -> bool) -> ('a list -> 'c -> string) -> ('b, 'c, 'a list) istate ->
+    ('b, 'c, 'a list) istate
 
-  val parse_distinct_list : ('a * 'a -> bool) -> ('a list -> Token.T list -> string) ->
-    ('a list) parser -> ('a list) parser
-  val parse_distinct_list' : ('a * 'a -> bool) ->
-    ('a list -> Context.generic * Token.T list -> string) -> ('a list) context_parser ->
-    ('a list) context_parser
+  val nonempty_name : (Token.T list -> string) -> string parser
 
-  val parse_nonempty_name : (Token.T list -> string) -> string parser
+  val code : ML_Code_Util.code parser
+  val nonempty_code : (Token.T list -> string) -> ML_Code_Util.code parser
 
-  val parse_code : ML_Code_Util.code parser
-  val parse_nonempty_code : (Token.T list -> string) -> ML_Code_Util.code parser
+  val bool : bool parser
+  val eq : string parser
+  val parenths : 'a parser -> 'a parser
+  val parenths' : 'a context_parser -> 'a context_parser
 
-  val parse_bool : bool parser
-  val parse_eq : string parser
+  val thm : thm context_parser
+  val multi_thm : (thm list) context_parser
+  val thms : (thm list) context_parser
+  val nonempty_thms : (Context.generic * Token.T list -> string) -> (thm list) context_parser
 
-  val parse_thm : thm context_parser
-  val parse_multi_thm : (thm list) context_parser
-  val parse_thms : (thm list) context_parser
-  val parse_nonempty_thms : (Context.generic * Token.T list -> string) -> (thm list) context_parser
+  (*ignore; needed for ML_int parser*)
+  structure Internal_Int_Data : GENERIC_DATA
+  val ML_int : (Token.T list -> string) -> int context_parser
 end
 
 structure Parse_Util : PARSE_UTIL =
@@ -88,23 +96,25 @@ fun and_list' scan = enum' "and" scan;
 
 type ('i, 'j, 'a) istate = 'i -> 'a * 'j
 
-fun if_ahead parse_ahead f parse =
-  (Scan.ahead parse_ahead :|-- (fn st => fn xs => (f st xs, xs))) || parse
+fun if_ahead ahead f scan =
+  (Scan.ahead ahead :|-- (fn st => fn xs => (f st xs, xs))) || scan
 
-fun if_eof parse = if_ahead Parse.eof parse
-fun if_eof' parse = if_ahead (Scan.lift Parse.eof) parse
+fun if_eof scan = if_ahead Parse.eof scan
+fun if_eof' scan = if_ahead (Scan.lift Parse.eof) scan
 
-fun option parse = if_eof (K o K NONE) (Scan.option parse)
-fun option' parse = if_eof' (K o K NONE) (Scan.option parse)
+fun option scan = if_eof (K o K NONE) (Scan.option scan)
+fun option' scan = if_eof' (K o K NONE) (Scan.option scan)
+fun optional scan default = option scan >> the_default default
+fun optional' scan default = option' scan >> the_default default
 
-fun gen_parse_position not_eof parse =
+fun gen_position not_eof scan =
   (Scan.optional (Scan.ahead not_eof >> Token.pos_of) Position.none
   >> (snd o Position.default))
-  -- parse
+  -- scan
   >> swap
 
-fun parse_position parse = gen_parse_position Parse.not_eof parse
-fun parse_position' parse = gen_parse_position (Scan.lift Parse.not_eof) parse
+fun position scan = gen_position Parse.not_eof scan
+fun position' scan = gen_position (Scan.lift Parse.not_eof) scan
 
 fun fail msg_of = Scan.fail_with (fn x => fn _ => msg_of x)
 fun gen_abort cut msg_of = fail msg_of |> cut
@@ -112,35 +122,45 @@ fun gen_abort cut msg_of = fail msg_of |> cut
 fun abort msg_of = gen_abort Parse.!!! msg_of
 fun abort' msg_of = gen_abort !!!+ msg_of
 
-fun filter_parser p err parse = parse :|-- (fn x => if p x then pair x else err x)
-fun gen_filter_parser_cut abort p msg_of = filter_parser p (abort o msg_of)
-fun filter_parser_cut p = gen_filter_parser_cut abort p
-fun filter_parser_cut' p = gen_filter_parser_cut abort' p
+fun filter p err scan = scan :|-- (fn x => if p x then pair x else err x)
+fun gen_filter_cut abort p msg_of = filter p (abort o msg_of)
+fun filter_cut p = gen_filter_cut abort p
+fun filter_cut' p = gen_filter_cut abort' p
 
-fun gen_parse_nonempty_list filter_parser_cut msg_of =
-  filter_parser_cut (not o null) (K msg_of)
-fun parse_nonempty_list msg_of = gen_parse_nonempty_list filter_parser_cut msg_of
-fun parse_nonempty_list' msg_of = gen_parse_nonempty_list filter_parser_cut' msg_of
+fun nonempty_list msg_of = filter (not o null) (K (fail msg_of))
+fun distinct_list eq msg_of = filter (not o has_duplicates eq) (fail o msg_of)
+fun nonempty_name msg_of = filter (curry (op <>) "") (K (fail msg_of)) Args.name
 
-fun gen_parse_distinct_list filter_parser_cut eq =
-  filter_parser_cut (not o has_duplicates eq)
-fun parse_distinct_list eq = gen_parse_distinct_list filter_parser_cut eq
-fun parse_distinct_list' eq = gen_parse_distinct_list filter_parser_cut' eq
+val code = if_eof (K o K []) ML_Code_Util.parse_code
+fun nonempty_code msg_of = nonempty_list msg_of code
 
-fun parse_nonempty_name msg_of = filter_parser_cut (curry (op <>) "") (K msg_of) Args.name
-
-val parse_code = if_eof (K o K []) ML_Code_Util.parse_code
-fun parse_nonempty_code msg_of = filter_parser_cut (not o null) (K msg_of) parse_code
-
-val parse_bool = Scan.recover (Args.name >> Value.parse_bool)
+val bool = Scan.recover (Args.name >> Value.parse_bool)
   (fail (K "expected \"true\" or \"false\""))
 
-val parse_eq = Parse.$$$ "\<equiv>" || Parse.$$$ "=" || fail (K "expected \"=\" or \"\<equiv>\"")
+val eq = Parse.$$$ "\<equiv>" || Parse.$$$ "=" || fail (K "expected \"=\" or \"\<equiv>\"")
+
+fun parenths scan = Parse.$$$ "(" |-- scan --| Parse.$$$ ")"
+fun parenths' scan = (Scan.lift (Parse.$$$ "(")) |-- scan --| (Scan.lift (Parse.$$$ ")"))
 
 (*for better error messages than Attrib.thm and friends*)
-fun parse_thm x = Attrib.thm x handle ERROR m => fail (K m) ()
-fun parse_multi_thm x = Attrib.multi_thm x handle ERROR m => fail (K m) ()
-val parse_thms = Scan.repeats parse_multi_thm
-fun parse_nonempty_thms msg = parse_nonempty_list' msg parse_thms
+fun thm x = Attrib.thm x handle ERROR m => fail (K m) ()
+fun multi_thm x = Attrib.multi_thm x handle ERROR m => fail (K m) ()
+val thms = Scan.repeats multi_thm
+fun nonempty_thms msg_of = nonempty_list msg_of thms
 
+structure Internal_Int_Data = Generic_Data( type T = int val empty = 0 val merge = fst)
+
+fun ML_int msg_of =
+  let fun int_from_code ((code, ctxt), pos) =
+    let val put_int_code = ML_Code_Util.read "Parse_Util.Internal_Int_Data.put"
+      @ ML_Code_Util.atomic code
+    in
+      Context.Proof ctxt
+      |> ML_Attribute_Util.attribute_map_context (ML_Attribute.run_map_context (put_int_code, pos))
+      |> Internal_Int_Data.get
+    end
+  in
+    Scan.lift Parse.int
+    || ((Scan.lift (nonempty_code msg_of) -- Args.context |> position') >> int_from_code)
+  end
 end

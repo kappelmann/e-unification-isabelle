@@ -26,6 +26,9 @@ sig
 
   val protect : cterm -> cterm
   val unprotect : cterm -> cterm
+
+  val no_dummy_pattern : term -> bool
+  val has_dummy_pattern : term -> bool
 end
 
 structure Term_Util : TERM_UTIL =
@@ -84,5 +87,8 @@ fun forall_elim_vars t i =
 
 val protect = Drule.protect
 val unprotect = Thm.dest_arg
+
+val no_dummy_pattern = can (Term.no_dummy_patterns)
+val has_dummy_pattern = not o no_dummy_pattern
 
 end

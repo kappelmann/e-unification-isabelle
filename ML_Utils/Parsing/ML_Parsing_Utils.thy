@@ -1,7 +1,9 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 subsection \<open>ML Parsing Utils\<close>
 theory ML_Parsing_Utils
-  imports ML_Utils_Base
+  imports
+    ML_Utils_Base
+    Logging.ML_Attributes
 begin
 
 paragraph \<open>Summary\<close>

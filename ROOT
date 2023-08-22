@@ -18,6 +18,7 @@ session ML_Unification = "Pure" +
     "Term_Index"
   theories
     ML_Unifiers
+    ML_Unification_Hints
     Unification_Attributes
     Unification_Tactics
 
