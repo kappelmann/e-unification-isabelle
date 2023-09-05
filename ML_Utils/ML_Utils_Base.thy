@@ -1,15 +1,15 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 theory ML_Utils_Base
   imports
-    Logging.Logging
-    Logging.ML_Code_Utils
+    ML_Logger.ML_Logger
+    ML_Logger.ML_Code_Utils
     ML_Binders
+    ML_General_Utils
 begin
 
 paragraph \<open>Summary\<close>
 text \<open>Basic ML utilities.\<close>
 
-ML_file\<open>general_util.ML\<close>
 ML_file\<open>term_util.ML\<close>
 
 lemma meta_eq_symmetric: "(A \<equiv> B) \<equiv> (B \<equiv> A)"
@@ -27,6 +27,4 @@ ML_file\<open>ml_syntax_util.ML\<close>
 
 ML_file\<open>pair_generic_data_args.ML\<close>
 
-
 end
-

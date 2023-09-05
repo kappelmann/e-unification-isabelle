@@ -1,5 +1,6 @@
 (*  Title: Term_Index/discrimination_tree.ML
-    Author: Sebastian Willenbrink, Kevin Kappelmann
+    Author:     Lawrence C Paulson, Cambridge University Computer Laboratory,
+                Sebastian Willenbrink, Kevin Kappelmann, TU Munich
 
 Discrimination trees based on Pure/net.ML.
 Requires operands to be beta-eta-short normalised.

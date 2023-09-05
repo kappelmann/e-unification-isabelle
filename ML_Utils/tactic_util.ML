@@ -52,7 +52,7 @@ sig
   (*creates equality theorem for a subgoal from an equality theorem for the subgoal's conclusion*)
   val eq_subgoal_from_eq_concl : cterm Binders.binders -> cterm list -> thm -> Proof.context -> thm
 
-  (*rewrite a subgoal given an equality theorem for the subgoal's conclusion*)
+  (*rewrite a subgoal given an equality theorem and environment for the subgoal's conclusion*)
   val rewrite_subgoal_unif_concl : Envir_Normalisation.thm_normaliser ->
     term Binders.binders -> (Envir.env * thm) -> Proof.context -> int -> tactic
 
@@ -71,7 +71,7 @@ sig
   val focus_delete_prems_tac : int list -> (Subgoal.focus -> int -> tactic) ->
     Proof.context -> int -> tactic
 
-  (*apply tactic to the specified goal (given as a cterm)*)
+  (*apply tactic to the specified subgoal, where the state is given as a cterm*)
   val apply_tac : (int -> tactic) -> int -> cterm -> thm Seq.seq
 
 end
@@ -222,3 +222,4 @@ fun focus_delete_prems_tac is tac ctxt =
 fun apply_tac tac i = Goal.init #> tac i #> Seq.map Goal.conclude
 
 end
+

@@ -5,6 +5,7 @@ Parsing utilities.
 *)
 signature PARSE_UTIL =
 sig
+  (*cut for context parsers*)
   val !!!+ : 'a context_parser -> 'a context_parser
 
   val enum1' : string -> 'a context_parser -> 'a list context_parser
@@ -37,7 +38,7 @@ sig
   val abort : (Token.T list -> string) -> 'a parser
   val abort' : (Context.generic * Token.T list -> string) -> 'a context_parser
 
-  (*filter f err p runs parser p to obtain result x and returns x if f x holds and err x otherwise*)
+  (*"filter f err p" runs parser p to obtain result x and returns x if "f x" holds and "err x" otherwise*)
   val filter : ('a -> bool) -> ('a -> ('b, 'b, 'a) istate) -> ('c, 'b, 'a) istate ->
     ('c, 'b, 'a) istate
   (*filter with cuts in case of failure*)
@@ -64,7 +65,7 @@ sig
   val thms : (thm list) context_parser
   val nonempty_thms : (Context.generic * Token.T list -> string) -> (thm list) context_parser
 
-  (*ignore; needed for ML_int parser*)
+  (*the following structure may be ignored; it is needed for below ML_int parser*)
   structure Internal_Int_Data : GENERIC_DATA
   val ML_int : (Token.T list -> string) -> int context_parser
 end

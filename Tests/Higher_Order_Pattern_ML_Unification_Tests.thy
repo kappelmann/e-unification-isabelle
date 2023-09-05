@@ -1,6 +1,6 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 \<^marker>\<open>contributor "Paul Bachmann"\<close>
-section \<open>Higher-Order Pattern ML Unification Tests\<close>
+subsection \<open>Higher-Order Pattern ML Unification Tests\<close>
 theory Higher_Order_Pattern_ML_Unification_Tests
   imports
     ML_Unification_Tests_Base
@@ -36,8 +36,7 @@ ML\<open>
       UC.add_fallback_unifier
       (Unif.e_unify Unification_Util.unify_types)
       ((fn binders =>
-        (Hints.map_retrieval (Hints.mk_sym_retrieval Hints.TI.generalisations |> K)
-        #> Hints.UH.map_concl_unifier (Unif.match |> K)
+        (Hints.UH.map_concl_unifier (Unif.match |> K)
         #> Hints.UH.map_normalisers ((Unif.norm_term_unify, Unif.norm_thm_unify) |> K)
         #> Hints.UH.map_prems_unifier (unif |> K))
         |> Context.proof_map
@@ -47,8 +46,8 @@ ML\<open>
     in unif [] end
 \<close>
 
-subsection \<open>Matching\<close>
-subsubsection \<open>Unit Tests\<close>
+subsubsection \<open>Matching\<close>
+paragraph \<open>Unit Tests\<close>
 
 ML_command\<open>
   let
@@ -77,7 +76,8 @@ ML_command\<open>
   end
 \<close>
 
-paragraph \<open>Asymmetry\<close>
+subparagraph \<open>Asymmetry\<close>
+
 ML_command\<open>
   let
     val ctxt = Proof_Context.set_mode Proof_Context.mode_schematic @{context}
@@ -94,7 +94,8 @@ ML_command\<open>
   end
 \<close>
 
-paragraph \<open>Ground Hints\<close>
+subparagraph \<open>Ground Hints\<close>
+
 ML_command\<open>
   let
     val ctxt = Proof_Context.set_mode Proof_Context.mode_schematic @{context}
@@ -116,10 +117,10 @@ ML_command\<open>
 \<close>
 
 
-subsection \<open>Unification\<close>
-subsubsection \<open>Generated Tests\<close>
+subsubsection \<open>Unification\<close>
 
-paragraph \<open>First Order\<close>
+paragraph \<open>Generated Tests\<close>
+subparagraph \<open>First-Order\<close>
 
 ML_command\<open>
   structure Test_Params =
@@ -137,7 +138,7 @@ ML_command\<open>
   val _ = First_Order_Tests.tests @{context} (SpecCheck_Random.new ())
 \<close>
 
-paragraph \<open>Higher Order\<close>
+subparagraph \<open>Higher-Order Pattern\<close>
 
 ML_file\<open>higher_order_pattern_unification_tests.ML\<close>
 
@@ -151,9 +152,8 @@ ML_command\<open>
     ]
 \<close>
 
-subsubsection \<open>Unit Tests\<close>
-
-paragraph \<open>With Unification Hints\<close>
+paragraph \<open>Unit Tests\<close>
+subparagraph \<open>With Unification Hints\<close>
 
 ML_command\<open>
   let

@@ -3,7 +3,7 @@
 
 Basic setup for ML unifier tests.
 
-TODO: generalise for unifiers with open terms
+TODO: generalise for unifiers with open terms; currently, all tests work with closed terms.
 *)
 signature UNIFICATION_TESTS_BASE =
 sig
@@ -75,7 +75,7 @@ struct
 
 structure Hints = Test_Unification_Hints
 
-val add_hint = Test_Unification_Hints.add_hint_prio o rpair Term_Index_Unification_Hints_Prio.MEDIUM
+val add_hint = Test_Unification_Hints.add_hint_prio o rpair Prio.MEDIUM
 fun add_hints thms ctxt = fold add_hint thms (Context.Proof ctxt) |> Context.proof_of
 
 structure Gen = SpecCheck_Generator
@@ -140,8 +140,8 @@ fun terms_unify_thms_correct norm_terms norm_thm ctxt unif tp =
   terms_unify ctxt unif tp andalso thms_correct norm_terms norm_thm ctxt unif tp
 
 val terms_unify_thms_correct_unif = terms_unify_thms_correct
-  (apply2 o Norm.beta_norm_term_unif)
-  (Norm.beta_eta_short_norm_thm Norm.norm_type_unif Norm.beta_norm_term_unif)
+  (apply2 o Norm.beta_eta_short_norm_term_unif)
+  (Norm.beta_eta_short_norm_thm Norm.norm_type_unif Norm.beta_eta_short_norm_term_unif)
 
 val terms_unify_thms_correct_match = terms_unify_thms_correct
   (apfst o Norm.beta_norm_term_match)
@@ -157,8 +157,8 @@ fun check_thm norm_terms norm_thm gen name unif ctxt = check gen ("Theorem corre
   ctxt
 
 fun check_thm_unif norm_terms = check_thm
-  (apply2 o Norm.beta_norm_term_unif)
-  (Norm.beta_eta_short_norm_thm Norm.norm_type_unif Norm.beta_norm_term_unif)
+  (apply2 o Norm.beta_eta_short_norm_term_unif)
+  (Norm.beta_eta_short_norm_thm Norm.norm_type_unif Norm.beta_eta_short_norm_term_unif)
   norm_terms
 
 fun check_thm_match norm_terms = check_thm
@@ -180,14 +180,13 @@ fun check_unit_tests_hints norm_terms norm_thm tests should_succeed hints name u
   end
 
 fun check_unit_tests_hints_unif norm_terms = check_unit_tests_hints
-  (apply2 o Norm.beta_norm_term_unif)
-  (Norm.beta_eta_short_norm_thm Norm.norm_type_unif Norm.beta_norm_term_unif)
+  (apply2 o Norm.beta_eta_short_norm_term_unif)
+  (Norm.beta_eta_short_norm_thm Norm.norm_type_unif Norm.beta_eta_short_norm_term_unif)
   norm_terms
 
 fun check_unit_tests_hints_match norm_terms = check_unit_tests_hints
   (apfst o Norm.beta_norm_term_match)
   (Norm.beta_eta_short_norm_thm (K I) (K I))
   norm_terms
-
 
 end

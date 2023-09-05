@@ -50,7 +50,7 @@ sig
     Unification_Base.matcher
 
   (* miscellaneous *)
-  (*approximates a proper unifier (working with bound variables) from a closed unifier
+  (*approximates a unifier (working with bound variables) from a closed unifier
     by replacing all bound variables with their associated free variables*)
   val unifier_from_closed_unifier : Unification_Base.closed_unifier -> Unification_Base.unifier
   val matcher_from_closed_matcher : Unification_Base.closed_matcher -> Unification_Base.matcher

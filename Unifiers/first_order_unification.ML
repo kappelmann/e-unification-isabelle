@@ -38,9 +38,9 @@ exception FALLBACK
 (*check if sequence is empty or raise FALLBACK exception*)
 fun seq_try sq = General_Util.seq_try FALLBACK sq
 
-val norm_term_match = Norm.norm_term_match
+val norm_term_match = Norm.eta_short_norm_term_match
 (*match already normalises the types*)
-val norm_thm_match = Norm.norm_thm (K I) norm_term_match
+val norm_thm_match = Norm.eta_short_norm_thm (K I) norm_term_match
 
 (* e-matching *)
 (*Note: by E-matching we mean "matching modulo equalities" in the general sense,
@@ -146,8 +146,8 @@ fun occurs v (Var (x, _)) = x = v
   | occurs v (Abs (_, _, t)) = occurs v t
   | occurs _ _ = false
 
-val norm_term_unify = Norm.norm_term_unif
-val norm_thm_unify = Norm.norm_thm_unif
+val norm_term_unify = Norm.eta_short_norm_term_unif
+val norm_thm_unify = Norm.eta_short_norm_thm_unif
 
 fun e_unify unify_types unify_theory binders ctxt st env =
   let

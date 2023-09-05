@@ -22,6 +22,8 @@ sig
   val nth_binder_data : 'a binders -> int -> 'a
   (*replaces all binders by their corresponding free variable in the given term*)
   val replace_binders : term binders -> term -> term
+  (*replaces all free variables that correspond to a binder by their binder*)
+  val replace_frees : term binders -> term -> term
   (*normalises types and associated free variables*)
   val norm_binders : Term_Normalisation.term_normaliser -> term binders -> term binders
 end
@@ -44,11 +46,14 @@ fun binder_types binders = map (snd o fst) binders
 
 fun nth_binder_data binders = snd o nth binders
 
-(*replace all Bounds by corresponding Frees*)
 fun replace_binders binders t = let val bvars = map snd binders
   in subst_bounds (bvars, t) end
 
+fun replace_frees binders =
+  let val subst = General_Util.fold_rev_index (fn (i, (_, free)) => cons (free, Bound i)) binders []
+  in subst_free subst end
+
 fun norm_binders norm =
-  map (fn ((n, _), t) => let val t = norm t in ((n, snd (dest_Free t)), t) end)
+  map (fn ((n, _), t) => let val t' = norm t in ((n, snd (dest_Free t')), t') end)
 
 end

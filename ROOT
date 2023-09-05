@@ -1,12 +1,22 @@
-session ML_Unification = "Pure" +
+chapter AFP
+
+session ML_Unification = "HOL" +
+  description
+    \<open>Various unification utilities for Isabelle/ML, e.g. E-unification, E-matching, and unification hints.\<close>
+  options [timeout = 500]
   sessions
-    Logging
+    ML_Logger
+    SpecCheck
   directories
     "Binders"
+    "Examples"
     "ML_Utils"
     "ML_Utils/Functor_Instances"
     "ML_Utils/Parsing"
     "Normalisations"
+    "Simps_To"
+    "Term_Index"
+    "Tests"
     "Unifiers"
     "Unification_Attributes"
     "Unification_Hints"
@@ -15,21 +25,17 @@ session ML_Unification = "Pure" +
     "Unification_Tactics/Assumption"
     "Unification_Tactics/Fact"
     "Unification_Tactics/Resolution"
-    "Term_Index"
   theories
     ML_Unifiers
-    ML_Unification_Hints
-    Unification_Attributes
     Unification_Tactics
+    Unification_Attributes
+    ML_Unification_Hints
+    ML_Unification_HOL_Setup
+    E_Unification_Examples
+    Unification_Hints_Reification_Examples
+  theories [document = false]
+    ML_Unification_Tests
+  document_files
+    "root.tex"
+    "root.bib"
 
-session ML_Unification_Tests in "Tests" = "HOL" +
-  sessions
-    SpecCheck
-    ML_Unification
-  directories
-    "../Examples"
-  theories
-    First_Order_ML_Unification_Tests
-    Higher_Order_Pattern_ML_Unification_Tests
-    Higher_Order_ML_Unification_Tests
-    ML_Unification_Hints_Examples

@@ -99,9 +99,9 @@ fun match_bind (tenv, binders, ixn, T, is, t) =
   end
 
 (** higher-order pattern E-unification **)
-val norm_term_match = Norm.norm_term_match
+val norm_term_match = Norm.beta_eta_short_norm_term_match
 (*match already normalises the types*)
-val norm_thm_match = Norm.norm_thm (K I) norm_term_match
+val norm_thm_match = Norm.beta_eta_short_norm_thm (K I) norm_term_match
 
 fun e_match match_types match_theory binders ctxt (pt as (p, t)) env =
   let
@@ -397,8 +397,8 @@ fun flexrigid unify_types ctxt (params as (env, binders, F, Fty, is, t)) =
     end
 
 (** higher-order pattern E-unification **)
-val norm_term_unify = Norm.norm_term_unif
-val norm_thm_unify = Norm.norm_thm_unif
+val norm_term_unify = Norm.beta_eta_short_norm_term_unif
+val norm_thm_unify = Norm.beta_eta_short_norm_thm_unif
 
 fun e_unify unify_types unify_theory binders ctxt st env =
   let

@@ -105,6 +105,8 @@ sig
   val unify_OF : thm list -> Proof.context -> thm -> thm option
   val unify_OF_attribute : thm list -> attribute
 
+  val binding : binding
+
   val set_args_attribute : (ML_Code_Util.code, ML_Code_Util.code, Unify_OF_Args.mode)
     Unify_OF_Args.PCA.entries * Position.T -> attribute
   val parse_set_args_attribute : attribute parser

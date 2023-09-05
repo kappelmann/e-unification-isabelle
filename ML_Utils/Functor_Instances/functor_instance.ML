@@ -17,9 +17,10 @@ signature FUNCTOR_INSTANCE_UTIL =
 sig
   structure FIA : FUNCTOR_INSTANCE_ARGS
 
-  (*create code calling the given function of the functor instance*)
+  (*create code that calls the given function of the functor instance*)
   val struct_op : string -> string
   val code_struct_op : string -> ML_Code_Util.code
+  (*accessor of the functor instance, e.g. "My_Instance."*)
   val accessor : string
 
   val id_prefix : bstring

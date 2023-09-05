@@ -12,7 +12,7 @@ end
 structure Method_Util : METHOD_UTIL =
 struct
 
-fun METHOD_CONTEXT tac ctxt = METHOD (fn thms => tac thms ctxt)
-fun METHOD_CONTEXT' tac ctxt = METHOD (fn thms => HEADGOAL (tac thms ctxt))
+fun METHOD_CONTEXT tac x = METHOD (fn thms => tac thms x)
+fun METHOD_CONTEXT' tac x = METHOD (fn thms => HEADGOAL (tac thms x))
 
 end

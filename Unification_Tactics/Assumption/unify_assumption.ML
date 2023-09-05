@@ -50,6 +50,8 @@ sig
 
   val unify_assumption_tac : Proof.context -> int -> tactic
 
+  val binding : binding
+
   val attribute : (ML_Code_Util.code, ML_Code_Util.code) Unify_Assumption_Args.PA.entries *
     Position.T -> attribute
   val parse_attribute : attribute parser

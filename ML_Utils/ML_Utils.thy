@@ -5,6 +5,7 @@ theory ML_Utils
     ML_Utils_Base
     ML_Parsing_Utils
     ML_Functor_Instances
+    ML_Priorities
 begin
 
 end

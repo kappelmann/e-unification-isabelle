@@ -73,6 +73,8 @@ sig
 
   val unify_fact_tac : thm list -> Proof.context -> int -> tactic
 
+  val binding : binding
+
   val attribute : (ML_Code_Util.code, ML_Code_Util.code) Unify_Fact_Args.PCA.entries *
     Position.T -> attribute
   val parse_attribute : attribute parser
@@ -120,7 +122,7 @@ val parse_arg_entries =
     val parsers = UFA.arg_parsers |> UFA.PCA_entries_from_PA_entries
     val parse_value = PCA.parse_entry (PCA.get_normaliser parsers) (PCA.get_unifier parsers)
     val parse_entry = Parse_Key_Value.parse_entry PCA.parse_key Parse_Util.eq parse_value
-  in PCA.parse_entries_required Parse.and_list1 [PCA.key PCA.unifier] parse_entry (PCA.empty_entries ()) end
+  in PCA.parse_entries_required Parse.and_list1 [] parse_entry (PCA.empty_entries ()) end
 
 fun attribute (entries, pos) =
   let

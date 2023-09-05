@@ -1,6 +1,6 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 \<^marker>\<open>contributor "Paul Bachmann"\<close>
-section \<open>First-Order ML Unification Tests\<close>
+subsection \<open>First-Order ML Unification Tests\<close>
 theory First_Order_ML_Unification_Tests
   imports
     ML_Unification_Tests_Base
@@ -14,6 +14,7 @@ ML\<open>
   structure UC = Unification_Combinator
   open Unification_Tests_Base
   structure Unif = First_Order_Unification
+  structure Norm = Envir_Normalisation
   val match = Unif.match []
   val match_hints =
     let fun match binders =
@@ -22,9 +23,9 @@ ML\<open>
       ((fn binders =>
         (Hints.map_retrieval (Hints.mk_retrieval Hints.TI.generalisations |> K)
         #> Hints.UH.map_concl_unifier (Higher_Order_Pattern_Unification.match |> K)
-        #> Hints.UH.map_normalisers ((Unif.norm_term_match, Unif.norm_thm_match) |> K)
-        #> Hints.UH.map_prems_unifier
-          (match |> UC.norm_matcher Envir_Normalisation.beta_norm_term_match |> K))
+        #> Hints.UH.map_normalisers ((Norm.beta_eta_short_norm_term_match,
+          Norm.beta_eta_short_norm_thm_match) |> K)
+        #> Hints.UH.map_prems_unifier (match |> UC.norm_matcher Norm.beta_norm_term_match |> K))
         |> Context.proof_map
         #> Test_Unification_Hints.try_hints binders)
         |> UC.norm_matcher Unif.norm_term_match)
@@ -37,11 +38,10 @@ ML\<open>
       UC.add_fallback_unifier
       (Unif.e_unify Unification_Util.unify_types)
       ((fn binders =>
-        (Hints.map_retrieval (Hints.mk_sym_retrieval Hints.TI.generalisations |> K)
-        #> Hints.UH.map_concl_unifier (Higher_Order_Pattern_Unification.match |> K)
-        #> Hints.UH.map_normalisers ((Unif.norm_term_unify, Unif.norm_thm_unify) |> K)
-        #> Hints.UH.map_prems_unifier
-          (unif |> UC.norm_unifier Envir_Normalisation.beta_norm_term_unif |> K))
+        (Hints.UH.map_concl_unifier (Higher_Order_Pattern_Unification.match |> K)
+        #> Hints.UH.map_normalisers ((Norm.beta_eta_short_norm_term_unif,
+          Norm.beta_eta_short_norm_thm_unif) |> K)
+        #> Hints.UH.map_prems_unifier (unif |> UC.norm_unifier Norm.beta_norm_term_unif |> K))
         |> Context.proof_map
         #> Test_Unification_Hints.try_hints binders)
         |> UC.norm_unifier Unif.norm_term_unify)
@@ -49,8 +49,8 @@ ML\<open>
     in unif [] end
 \<close>
 
-subsection \<open>Matching\<close>
-subsubsection \<open>Unit Tests\<close>
+subsubsection \<open>Matching\<close>
+paragraph \<open>Unit Tests\<close>
 
 ML_command\<open>
   let
@@ -82,7 +82,8 @@ ML_command\<open>
   end
 \<close>
 
-paragraph \<open>Asymmetry\<close>
+subparagraph \<open>Asymmetry\<close>
+
 ML_command\<open>
   let
     val ctxt = Proof_Context.set_mode Proof_Context.mode_schematic @{context}
@@ -99,7 +100,8 @@ ML_command\<open>
   end
 \<close>
 
-paragraph \<open>Ground Hints\<close>
+subparagraph \<open>Ground Hints\<close>
+
 ML_command\<open>
   let
     val ctxt = Proof_Context.set_mode Proof_Context.mode_schematic @{context}
@@ -121,8 +123,8 @@ ML_command\<open>
 \<close>
 
 
-subsection \<open>Unification\<close>
-subsubsection \<open>Generated Tests\<close>
+subsubsection \<open>Unification\<close>
+paragraph \<open>Generated Tests\<close>
 
 ML_command\<open>
   structure Test_Params =
@@ -140,8 +142,9 @@ ML_command\<open>
   val _ = First_Order_Tests.tests @{context} (SpecCheck_Random.new ())
 \<close>
 
-subsubsection \<open>Unit Tests\<close>
-paragraph \<open>Occurs-Check\<close>
+paragraph \<open>Unit Tests\<close>
+subparagraph \<open>Occurs-Check\<close>
+
 ML_command\<open>
   let
     val unit_tests = [
@@ -188,7 +191,8 @@ ML_command\<open>
   end
 \<close>
 
-paragraph \<open>Lambda-Abstractions\<close>
+subparagraph \<open>Lambda-Abstractions\<close>
+
 ML_command\<open>
   let
     val ctxt = Proof_Context.set_mode Proof_Context.mode_schematic @{context}

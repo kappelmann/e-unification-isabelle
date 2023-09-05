@@ -174,6 +174,8 @@ sig
   val unify_resolve_tac : Unify_Resolve_Args.resolve_mode -> thm list -> thm list -> Proof.context ->
     int -> tactic
 
+  val binding : binding
+
   val attribute : (ML_Code_Util.code, ML_Code_Util.code, Unify_Resolve_Args.mode,
     Unify_Resolve_Args.chained_mode) Unify_Resolve_Args.PCA.entries * Position.T -> attribute
   val parse_attribute : attribute parser

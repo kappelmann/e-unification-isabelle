@@ -1,4 +1,4 @@
-(*  Title:      ML_Unification/ml_syntax_util.ML
+(*  Title:      ML_Utils/ml_syntax_util.ML
     Author:     Kevin Kappelmann
 
 Utilities to create ML syntax as strings.

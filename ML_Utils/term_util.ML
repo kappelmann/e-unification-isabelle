@@ -8,14 +8,15 @@ sig
   val fresh_vars : string -> typ list -> int -> term list * int
   val fresh_var : string -> typ -> int -> term * int
 
-  (*return outer parameters in reversed order*)
+  (*returns outer parameters in reversed order*)
   val strip_all : term -> (string * typ) list * term
   val strip_call : cterm -> cterm Binders.binders * cterm
 
+  (*returns premises and conclusion*)
   val strip_imp : term -> term list * term
   val strip_cimp : cterm -> cterm list * cterm
 
-  (*return outer parameters in reversed order*)
+  (*returns outer parameters in reversed order, premises, and conclusion*)
   val strip_subgoal : term -> (string * typ) list * (term list * term)
   val strip_csubgoal : cterm -> cterm Binders.binders * (cterm list * cterm)
   val strip_nth_subgoal : int -> thm -> (string * typ) list * (term list * term)

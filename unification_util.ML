@@ -10,7 +10,6 @@ sig
   (* pretty-printing *)
   val pretty_types : Proof.context -> typ list -> Pretty.T
   val pretty_terms : Proof.context -> term list -> Pretty.T
-  val pretty_thm : Proof.context -> thm -> Pretty.T
 
   val pretty_tyenv : Proof.context -> Type.tyenv -> Pretty.T
   val pretty_tenv : Proof.context -> Envir.tenv -> Pretty.T
@@ -78,7 +77,6 @@ in
 
 fun pretty_types ctxt = Pretty.block o Pretty.commas o map (pretty_type ctxt)
 fun pretty_terms ctxt = Pretty.block o Pretty.commas o map (pretty_term ctxt)
-val pretty_thm = Thm.pretty_thm
 
 fun pretty_tyenv ctxt =
   let
@@ -208,7 +206,7 @@ fun log_unif_result ctxt _ (env, thm) =
     pretty_env ctxt env,
     Pretty.fbrk,
     Pretty.str "Theorem: ",
-    pretty_thm ctxt thm
+    Thm.pretty_thm ctxt thm
   ] |> Pretty.string_of)
 
 fun log_unif_results ctxt tp unify =

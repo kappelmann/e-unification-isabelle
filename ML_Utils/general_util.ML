@@ -12,6 +12,8 @@ sig
   (*returns false if function throws an exception*)
   val try_bool : ('a -> bool) -> 'a -> bool
 
+  (*lists*)
+  val insert : 'a ord -> 'a -> 'a list -> 'a list
   val fold_rev_index: (int * 'a -> 'b -> 'b) -> 'a list -> 'b -> 'b
 
   (* sequences *)
@@ -29,6 +31,13 @@ fun flip f x y = f y x
 fun find_first_index p = get_index (Option.filter p)
 
 fun try_bool f = try f #> (Option.getOpt o rpair false)
+
+(*lists*)
+fun insert _ x [] = [x]
+  | insert ord x (y :: ys) = case ord (x, y) of
+      LESS => x :: y :: ys
+    | EQUAL => x :: y :: ys
+    | GREATER => y :: insert ord x ys
 
 fun fold_rev_index f =
   let fun fold_aux _ [] y = y

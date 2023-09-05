@@ -71,7 +71,7 @@ fun unify_resolve_tac norm_thm unify rule ctxt =
             Pretty.str ": ",
             Util.pretty_terms ctxt [Thm.term_of cgoal],
             Pretty.str (" and rule: "),
-            Util.pretty_thm ctxt rule
+            Thm.pretty_thm ctxt rule
           ]
           |> Pretty.string_of
         )
@@ -123,7 +123,7 @@ fun unify_eresolve_tac norm_thm_resolve unify_resolve norm_thm_assume unify_assu
       (@{log Logger.WARN} ctxt (fn _ =>
         Pretty.block [
           Pretty.str "elim-resolution rule ",
-          Util.pretty_thm ctxt rule,
+          Thm.pretty_thm ctxt rule,
           Pretty.str " has no premises."
         ] |> Pretty.string_of
       );
@@ -153,7 +153,7 @@ fun unify_dresolve_tac norm_thm unify rule ctxt =
       (@{log Logger.WARN} ctxt (fn _ =>
         Pretty.block [
           Pretty.str "destruct-resolution rule ",
-          Util.pretty_thm ctxt rule,
+          Thm.pretty_thm ctxt rule,
           Pretty.str " has no premises."
         ] |> Pretty.string_of
       );
@@ -178,7 +178,7 @@ fun unify_fresolve_tac norm_thm unify rule ctxt i state =
       (@{log Logger.WARN} ctxt (fn _ =>
         Pretty.block [
           Pretty.str "forward-resolution rule ",
-          Util.pretty_thm ctxt rule,
+          Thm.pretty_thm ctxt rule,
           Pretty.str " has no premises."
         ] |> Pretty.string_of
       );

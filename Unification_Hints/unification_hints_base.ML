@@ -8,7 +8,8 @@ We support a generalisation that
 3. allows arbitrary functions to perform the matching/unification of a hint with
    a disagreement pair.
 
-forall y1...yn. (forall x1...xn. lhs1 =?= rhs1) ==> ... ==> lhsc y1...yn =?= rhsc y1...yn
+General shape of a hint:
+\<open>\<And>y1...yn. (\<And>x1...xn1. lhs1 \<equiv> rhs1) \<Longrightarrow> ... \<Longrightarrow> (\<And>x1...xnk. lhsk \<equiv> rhsk) \<Longrightarrow> lhs \<equiv> rhs\<close>
 *)
 signature UNIFICATION_HINTS_BASE =
 sig
@@ -19,6 +20,9 @@ sig
   val cdest_hint_concl : unif_hint -> cterm * cterm
   val symmetric_hint : unif_hint -> unif_hint
   val pretty_hint : Proof.context -> unif_hint -> Pretty.T
+
+  type hint_preprocessor = Proof.context -> thm -> unif_hint
+  val obj_logic_hint_preprocessor : thm -> conv -> hint_preprocessor
 
   val try_hint : Unification_Base.matcher -> Envir_Normalisation.term_normaliser ->
     Envir_Normalisation.thm_normaliser -> unif_hint -> Unification_Base.e_unifier
@@ -48,6 +52,14 @@ val cdest_hint_concl = Thm.cconcl_of #> Thm.dest_equals
 (*only flips the conclusion since unification calls for the premises should be symmetric*)
 val symmetric_hint = Conv.concl_conv ~1 CUtil.symmetric_conv |> CUtil.thm_conv
 val pretty_hint = Thm.pretty_thm
+
+type hint_preprocessor = Proof.context -> thm -> unif_hint
+fun obj_logic_hint_preprocessor eq_eq_meta_eq default_conv ctxt =
+  let
+    fun eq_conv ct = (if can Thm.dest_equals ct then Conv.all_conv
+      else Conv.rewr_conv eq_eq_meta_eq else_conv default_conv) ct
+    val forall_eq_conv = Conversion_Util.repeat_forall_conv (K o K eq_conv)
+  in Conversion_Util.imp_conv (forall_eq_conv ctxt) eq_conv |> Conversion_Util.thm_conv end
 
 (*Tries to apply a hint to solve E-unification of (t1 \<equiv>? t2).
 Vars in hint are lifted wrt. the passed binders.
@@ -87,7 +99,7 @@ fun try_hint match norm_term_unif norm_thm_unif hint unify binders ctxt (t1, t2)
         val _ = @{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
             Pretty.str "Hint ",
             pretty_hint ctxt hint,
-            Pretty.str " matched. Unifying premises..."
+            Pretty.str ((length hint_prems > 0 ? suffix " Unifying premises...") " matched.")
           ] |> Pretty.string_of)
         (*unify each hint premise and collect the theorems while iteratively extending the environment*)
         fun unif_prem prem =
@@ -111,10 +123,10 @@ fun try_hint match norm_term_unif norm_thm_unif hint unify binders ctxt (t1, t2)
             val prem_thms_inst = map (uncurry forall_intr) prem_thms |> rev
             val (concl_thmL, concl_thmR) = apply2 norm_thm_unif concl_thmp
             (*discharge the hint premises*)
-            val thm_res = Thm_Util.implies_elim_list_beta_eta_short lifted_hint_inst prem_thms_inst
+            val thm_res = Drule.implies_elim_list lifted_hint_inst prem_thms_inst
               |> Drule.forall_elim_list (mk_norm_cbinders rev_binders)
-              |> GUtil.flip Thm_Util.transitive_beta_eta_short concl_thmR
-              |> Thm_Util.transitive_beta_eta_short (Unification_Base.symmetric concl_thmL)
+              |> GUtil.flip Thm.transitive concl_thmR
+              |> Thm.transitive (Unification_Base.symmetric concl_thmL)
           in (env_res, thm_res) end
       in Seq.maps unify_prems match_env_concl_thmpq |> Seq.map inst_discharge end
   end

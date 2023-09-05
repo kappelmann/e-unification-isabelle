@@ -1,5 +1,5 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
-section \<open>Higher-Order ML Unification Tests\<close>
+subsection \<open>Higher-Order ML Unification Tests\<close>
 theory Higher_Order_ML_Unification_Tests
   imports
     Higher_Order_Pattern_ML_Unification_Tests
@@ -15,10 +15,10 @@ ML\<open>
   val unify = Unif.unify []
 \<close>
 
-subsection \<open>Unification\<close>
-subsubsection \<open>Generated Tests\<close>
+subsubsection \<open>Unification\<close>
 
-paragraph \<open>First Order\<close>
+paragraph \<open>Generated Tests\<close>
+subparagraph \<open>First-Order\<close>
 
 ML_command\<open>
   structure Test_Params =
@@ -38,9 +38,7 @@ ML_command\<open>
   val _ = First_Order_Tests.tests @{context} (SpecCheck_Random.new ())
 \<close>
 
-paragraph \<open>Higher Order\<close>
-
-subsubsection \<open>Higher-Order Patterns\<close>
+subparagraph \<open>Higher-Order Patterns\<close>
 
 ML_file\<open>higher_order_pattern_unification_tests.ML\<close>
 
@@ -53,7 +51,7 @@ ML_command\<open>
     ]
 \<close>
 
-subsubsection \<open>Unit Tests\<close>
+paragraph \<open>Unit Tests\<close>
 
 ML_command\<open>
   let

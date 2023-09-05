@@ -32,7 +32,6 @@ fun unify_assumption unify ctxt i state =
     else
       let
         val (binders, unif_ctxt) = Binders.fix_binders rparams ctxt
-        (*unified assumption must be the first premise in the passed state*)
         fun prepare_nth_prem n prem =
           let val (params, nprems_prem) = Term_Util.strip_all prem ||> Logic.count_prems
           in
@@ -53,6 +52,7 @@ fun unify_assumption unify ctxt i state =
               end
           end
         fun mk_result prem_index state =
+          (*unified assumption must be the first premise in the passed state*)
           (let val (_, (prem :: _, concl)) = strip_subgoal state
           in
             unify binders unif_ctxt (prem, concl) (Envir.empty (Thm.maxidx_of state))
@@ -82,7 +82,6 @@ fun unify_assumption_tac_index norm_thm unify ctxt i state =
     fun rewrite_subgoal ((n, binders), (res, state)) =
       (*rewrite conclusion to match the premise*)
       Tactic_Util.rewrite_subgoal_unif_concl norm_thm binders res ctxt i state
-      |> Seq.maps (CONVERSION Drule.beta_eta_conversion i)
       (*unified premise is moved to the front; now close by equality assumption*)
       |> Seq.maps (DETERM (Tactic_Util.nth_eq_assume_tac 1 i))
       |> Seq.map (pair n)
