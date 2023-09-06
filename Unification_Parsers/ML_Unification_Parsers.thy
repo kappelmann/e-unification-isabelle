@@ -1,7 +1,8 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 section \<open>Unification Parsers\<close>
 theory ML_Unification_Parsers
-  imports ML_Parsing_Utils
+  imports
+    ML_Parsing_Utils
 begin
 
 paragraph \<open>Summary\<close>

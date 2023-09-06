@@ -2,11 +2,10 @@
 section \<open>Unification Hints\<close>
 theory ML_Unification_Hints
   imports
-    ML_Functor_Instances
+    ML_Generic_Data_Utils
     ML_Term_Index
     ML_Unifiers
     ML_Unification_Parsers
-    ML_Priorities
 begin
 
 paragraph \<open>Summary\<close>

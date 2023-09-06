@@ -1,8 +1,8 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
-section \<open>Basics\<close>
+section \<open>ML Unification Basics\<close>
 theory ML_Unification_Base
   imports
-    ML_Logger.ML_Logger
+    ML_Logger
     ML_Binders
     ML_Normalisations
 begin

@@ -1,5 +1,5 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
-subsection \<open>ML Functor Instances\<close>
+section \<open>ML Functor Instances\<close>
 theory ML_Functor_Instances
   imports
     ML_Parsing_Utils
@@ -11,9 +11,10 @@ text \<open>Utilities for ML functors that create context data.\<close>
 ML_file\<open>functor_instance.ML\<close>
 ML_file\<open>functor_instance_antiquot.ML\<close>
 
-(*example application*)
+paragraph \<open>Example\<close>
+
 ML_command\<open>
-  (*some functor*)
+  \<comment>\<open>some arbitrary functor\<close>
   functor My_Functor(A : sig
     structure FIA : FUNCTOR_INSTANCE_ARGS
     val n : int
@@ -24,7 +25,7 @@ ML_command\<open>
       A.n)
   end
 
-  (*create an instance (structure) called "Test_Functor_Instance"*)
+  \<comment>\<open>create an instance (structure) called \<open>Test_Functor_Instance\<close>\<close>
   @{functor_instance struct_name = Test_Functor_Instance
     and functor_name = My_Functor
     and id = \<open>"test"\<close>

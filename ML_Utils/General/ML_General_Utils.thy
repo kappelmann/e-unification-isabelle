@@ -1,4 +1,5 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
+section \<open>General ML Utils\<close>
 theory ML_General_Utils
   imports Pure
 begin

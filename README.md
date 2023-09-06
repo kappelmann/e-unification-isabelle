@@ -2,10 +2,27 @@
 
 ## Content
 
-1. First-order and higher-order pattern E-unification and E-matching for Isabelle with theorem certificates.
-   In other words: unification/matching with adjustable fallback equality prover + certificates.
-2. Tactics with adjustable unifier
-3. [Unification Hints](https://link.springer.com/chapter/10.1007/978-3-642-03359-9_8)
+1. First-order and higher-order pattern
+[E-unification](https://en.wikipedia.org/wiki/Unification_(computer_science%29#E-unification)
+and E-matching.
+While unifiers in Isabelle/ML only consider the alpha-beta-eta-equational theory of the lambda-calculus,
+unifiers in this article
+may take an extra background theory, in the form of an equational prover, into account.
+For example, the unification problem `n = ?m + 0`
+may be solved by providing a prover for the background theory `forall n. n + 0 = n`.
+2. Tactics, methods, and attributes with adjustable unifiers (e.g.\ resolution, fact, assumption, OF).
+3. A generalisation of [unification hints](https://www.researchgate.net/publication/221302555_Hints_in_Unification).
+Unification hints are a flexible extension for unifiers.
+Among other things, they can be used for reflective tactics,
+to provide canonical unification instances,
+or to simply strengthen the background theory of a unifier in a controlled manner.
+4. A hierarchical logger for Isabelle/ML,
+including per logger configurations with log levels, output channels, message filters.
+See `Logger/README.md` for details.
+
+While this entry works with every object logic,
+some extra setup for Isabelle/HOL and application examples are provided.
+All unifiers are tested with SpecCheck.
 
 See `Examples/` for some application examples.
 

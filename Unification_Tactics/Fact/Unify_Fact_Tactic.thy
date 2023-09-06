@@ -1,7 +1,8 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 subsection \<open>Fact Tactic\<close>
 theory Unify_Fact_Tactic
-  imports Unify_Resolve_Tactics
+  imports
+    Unify_Resolve_Tactics
 begin
 
 paragraph \<open>Summary\<close>

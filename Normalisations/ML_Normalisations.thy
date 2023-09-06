@@ -1,7 +1,8 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 section \<open>ML-Normalisations\<close>
 theory ML_Normalisations
-  imports Pure
+  imports
+    Pure
 begin
 
 paragraph \<open>Summary\<close>

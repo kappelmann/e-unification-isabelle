@@ -1,8 +1,9 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
-subsection \<open>ML Parsing Utils\<close>
+section \<open>ML Parsing Utils\<close>
 theory ML_Parsing_Utils
   imports
-    ML_Utils_Base
+    ML_Attributes
+    ML_Attribute_Utils
 begin
 
 paragraph \<open>Summary\<close>
@@ -21,27 +22,26 @@ ML_file\<open>parse_key_value_antiquot.ML\<close>
   |> split_lines |> map Pretty.str |> Pretty.fbreaks |> Pretty.block |> Pretty.writeln
 \<close> *)
 
-(*example parser*)
+paragraph \<open>Example\<close>
+
 ML_command\<open>
-  (*create record type and utility functions*)
+  \<comment> \<open>Create record type and utility functions.\<close>
   @{parse_entries (struct) Test [ABC, DEFG]}
 
   val parser =
     let
-      (*create the key-value parser*)
+      \<comment> \<open>Create the key-value parser.\<close>
       val parse_entry = Parse_Key_Value.parse_entry
-        Test.parse_key (*parser for keys*)
-        (Scan.succeed [])  (*delimiter parser*)
-        (Test.parse_entry (*value parser*)
-          Parse.string (*parser for ABC*)
-          Parse.int) (*parser for DEFG*)
-      val required_keys = [Test.key Test.ABC] (*required keys*)
-      val default_entries = Test.empty_entries () (*default values for entries*)
+        Test.parse_key \<comment>\<open>parser for keys\<close>
+        (Scan.succeed [])  \<comment>\<open>delimiter parser\<close>
+        (Test.parse_entry \<comment>\<open>value parser\<close>
+          Parse.string \<comment>\<open>parser for ABC\<close>
+          Parse.int) \<comment>\<open>parser for DEFG\<close>
+      val required_keys = [Test.key Test.ABC] \<comment>\<open>required keys\<close>
+      val default_entries = Test.empty_entries () \<comment>\<open>default values for entries\<close>
     in Test.parse_entries_required Parse.and_list1 required_keys parse_entry default_entries end
-  (*parses, for example,
-    - \<open>ABC = hello and DEFG = 3\<close>,
-    - \<open>DEFG = 3 and ABC = hello\<close>
-  but not \<open>DEFG = 3\<close> since the key "ABC" is missing.*)
+    \<comment> \<open>This parses, for example, \<open>ABC = hello and DEFG = 3\<close> or \<open>DEFG = 3 and ABC = hello\<close>,
+    but not \<open>DEFG = 3\<close> since the key "ABC" is missing.\<close>
 \<close>
 
 end

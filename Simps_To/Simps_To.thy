@@ -2,9 +2,10 @@
 section \<open>Simps To\<close>
 theory Simps_To
   imports
-    ML_Utils_Base
+    ML_Tactic_Utils
+    ML_Theorem_Utils
     ML_Unification_Base
-    ML_Logger.Setup_Result_Commands
+    Setup_Result_Commands
 begin
 
 paragraph \<open>Summary\<close>
@@ -54,8 +55,7 @@ lemma
   and [simp]: "Q \<equiv> R"
   shows "PROP SIMPS_TO P Q"
   apply simp \<comment>\<open>Note: only the left-hand side is simplified.\<close>
-  (*obtaining the normal form theorem for a term in ML*)
-  ML_command\<open>
+  ML_command\<open> \<comment>\<open>obtaining the normal form theorem for a term in ML\<close>
     Simps_To.SIMPS_TO_thm_resultsq (simp_tac @{context}) @{context} @{cterm P}
     |> Seq.list_of |> map @{print}
   \<close>

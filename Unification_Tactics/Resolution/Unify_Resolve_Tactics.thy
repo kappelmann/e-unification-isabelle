@@ -1,7 +1,9 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 subsection \<open>Resolution Tactics\<close>
 theory Unify_Resolve_Tactics
-  imports Unify_Assumption_Tactic
+  imports
+    Unify_Assumption_Tactic
+    ML_Method_Utils
 begin
 
 paragraph \<open>Summary\<close>

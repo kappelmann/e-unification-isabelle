@@ -1,6 +1,6 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 \<^marker>\<open>contributor "Paul Bachmann"\<close>
-section \<open>Reification Via Unification Hints\<close>
+section \<open>Examples: Reification Via Unification Hints\<close>
 theory Unification_Hints_Reification_Examples
   imports
     HOL.Rat
@@ -180,12 +180,12 @@ fun eval_mul_expr :: "mul_expr \<times> rat list \<Rightarrow> rat" where
 | "eval_mul_expr (Mul e1 e2, \<Gamma>) = eval_mul_expr (e1, \<Gamma>) * eval_mul_expr (e2, \<Gamma>)"
 | "eval_mul_expr (Inv e, \<Gamma>) = inverse (eval_mul_expr (e, \<Gamma>))"
 
-(*split e into an expression and an environment*)
+text \<open>Split @{term e} into an expression and an environment.\<close>
 lemma [reify_unif_hint where prio = Prio.VERY_LOW]:
   "e \<equiv> (e1, \<Gamma>) \<Longrightarrow> eval_mul_expr (e1, \<Gamma>) \<equiv> n \<Longrightarrow> eval_mul_expr e \<equiv> n"
   by simp
 
-(*hints for environment lookup*)
+text \<open>Hints for environment lookup.\<close>
 lemma [reify_unif_hint where prio = Prio.LOW]:
   "e \<equiv> Var (Suc p) \<Longrightarrow> \<Gamma> \<equiv> s # \<Delta> \<Longrightarrow> n \<equiv> eval_mul_expr (Var p, \<Delta>) \<Longrightarrow> eval_mul_expr (e, \<Gamma>) \<equiv> n"
   by simp

@@ -1,4 +1,4 @@
-(*  Title:      ML_Utils/ml_attribute_util.ML
+(*  Title:      ML_Utils/attribute_util.ML
     Author:     Kevin Kappelmann
 
 Utilities for attributes.

@@ -1,7 +1,8 @@
 \<^marker>\<open>creator "Kevin Kappelmann"\<close>
 section \<open>Term Indexing\<close>
 theory ML_Term_Index
-  imports ML_Normalisations
+  imports
+    ML_Normalisations
 begin
 
 paragraph \<open>Summary\<close>
