@@ -31,7 +31,6 @@ See `Examples/` for some application examples.
 Requirements:
 1. The Isabelle development version
 2. The AFP development version
-3. This [Isabelle/ML logging framework](https://github.com/kappelmann/logger-isabelle)
 
 ## Future Tasks
 
