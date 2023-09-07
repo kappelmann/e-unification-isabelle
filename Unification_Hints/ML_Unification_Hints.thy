@@ -31,9 +31,9 @@ ML\<open>
       structure TI = Discrimination_Tree
       val init_args = {
         concl_unifier = SOME Higher_Order_Pattern_Unification.unify,
-        normalisers = SOME (Mixed_Unification.norm_term_first_higherp_comb_higher_unify,
-          Mixed_Unification.norm_thm_first_higherp_comb_higher_unify),
-        prems_unifier = SOME (Mixed_Unification.first_higherp_comb_higher_unify
+        normalisers = SOME (Standard_Mixed_Unification.norm_term_first_higherp_comb_higher_unify,
+          Standard_Mixed_Unification.norm_thm_first_higherp_comb_higher_unify),
+        prems_unifier = SOME (Standard_Mixed_Unification.first_higherp_comb_higher_unify
           |> Unification_Combinator.norm_unifier Envir_Normalisation.beta_norm_term_unif),
         retrieval = SOME (Term_Index_Unification_Hints_Args.mk_sym_retrieval
           TI.norm_term TI.unifiables),
@@ -46,7 +46,8 @@ text\<open>Standard unification hints are accessible via @{attribute unif_hint}.
 
 declare [[ucombine add = \<open>Standard_Unification_Combine.eunif_data
   (Standard_Unification_Hints.try_hints
-  |> Unification_Combinator.norm_unifier Higher_Order_Pattern_Unification.norm_term_unify
+  |> Unification_Combinator.norm_unifier
+    Standard_Mixed_Unification.norm_term_first_higherp_comb_higher_unify
   |> K)
   (Standard_Unification_Combine.default_metadata Standard_Unification_Hints.binding)\<close>]]
 

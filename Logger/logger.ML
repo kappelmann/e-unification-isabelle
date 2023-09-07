@@ -165,7 +165,15 @@ structure Logger_Data = Generic_Data(
 
 fun lookup_logger (Logger_Binding binding) =
   Logger_Data.get #> (fn bt => BT.lookup bt binding)
-fun insert_logger bcp = Logger_Data.map (apfst binding_of bcp |> BT.insert)
+fun insert_logger bcp context =
+  (Logger_Data.map (apfst binding_of bcp |> BT.insert) context)
+  handle (exn as BT.INSERT) => (warning (Pretty.block [
+      Pretty.str "Logger ",
+      pretty_binding (fst bcp),
+      Pretty.str " already added."
+    ] |> Pretty.string_of);
+    Exn.reraise exn)
+
 fun insert_logger_safe bcp = Logger_Data.map (apfst binding_of bcp |> BT.insert_safe)
 fun delete_logger (Logger_Binding binding) = Logger_Data.map (BT.delete_safe binding)
 fun cut_loggers (Logger_Binding binding) = Logger_Data.map (BT.cut_safe binding)

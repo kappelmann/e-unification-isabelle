@@ -43,11 +43,17 @@ ML_file\<open>simplifier_unification.ML\<close>
 paragraph \<open>Mixture of Unifiers\<close>
 
 ML_file\<open>mixed_unification.ML\<close>
+ML\<open>
+  @{functor_instance struct_name = Standard_Mixed_Unification
+    and functor_name = Mixed_Unification
+    and id = \<open>""\<close>
+    and more_args = \<open>structure UC = Standard_Unification_Combine\<close>}
+\<close>
 
 declare [[ucombine add = \<open>Standard_Unification_Combine.eunif_data
   (Simplifier_Unification.simp_unify
   |> Unification_Combinator.norm_closed_unifier
-    Mixed_Unification.norm_term_first_higherp_comb_higher_unify
+    Standard_Mixed_Unification.norm_term_first_higherp_comb_higher_unify
   |> Unification_Combinator.unifier_from_closed_unifier
   |> K)
   (Standard_Unification_Combine.default_metadata \<^binding>\<open>simp_unif\<close>)\<close>]]
