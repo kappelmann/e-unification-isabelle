@@ -59,6 +59,11 @@ lemma "(x + (y :: nat))^2 \<le> x^2 + 2*x*y + y^2 + 4 * y + x - y"
   supply power2_sum[simp]
   by (ufact TrueI)
 
+lemma
+  assumes "\<And>s. P (Suc (Suc 0)) (s(x := (1 :: nat), x := 1 + 1 * 4 - 3))"
+  shows "P 2 (s(x := 2))"
+  by (ufact assms[of s])
+
 subsection \<open>Providing Canonical Solutions With Unification Hints\<close>
 
 lemma [unif_hint]: "xs \<equiv> [] \<Longrightarrow> length xs \<equiv> 0" by simp
