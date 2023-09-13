@@ -11,14 +11,13 @@ text \<open>Resolution tactics and methods with adjustable unifier.\<close>
 
 ML_file\<open>unify_resolve_base.ML\<close>
 ML_file\<open>unify_resolve.ML\<close>
-
 ML\<open>
   @{functor_instance struct_name = Standard_Unify_Resolve
     and functor_name = Unify_Resolve
     and id = \<open>""\<close>
     and more_args = \<open>val init_args = {
-      normaliser = SOME Standard_Mixed_Unification.norm_thm_first_higherp_comb_higher_unify,
-      unifier = SOME Standard_Mixed_Unification.first_higherp_comb_higher_unify,
+      normalisers = SOME Standard_Mixed_Unification.norms_first_higherp_first_comb_higher_unify,
+      unifier = SOME Standard_Mixed_Unification.first_higherp_first_comb_higher_unify,
       mode = SOME (Unify_Resolve_Args.PM.key Unify_Resolve_Args.PM.any),
       chained = SOME (Unify_Resolve_Args.PCM.key Unify_Resolve_Args.PCM.resolve)
     }\<close>}

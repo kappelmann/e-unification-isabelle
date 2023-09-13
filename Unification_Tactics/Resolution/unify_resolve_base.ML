@@ -8,48 +8,48 @@ sig
   include HAS_LOGGER
 
   (*unify the conclusions of the rule and the subgoal and resolve*)
-  val unify_resolve_tac : Envir_Normalisation.thm_normaliser ->
+  val unify_resolve_tac : Unification_Base.normalisers ->
     Unification_Base.unifier -> thm -> Proof.context -> int -> tactic
-  val unify_resolve_every_tac : Envir_Normalisation.thm_normaliser ->
+  val unify_resolve_every_tac : Unification_Base.normalisers ->
     Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
-  val unify_resolve_any_tac : Envir_Normalisation.thm_normaliser ->
+  val unify_resolve_any_tac : Unification_Base.normalisers ->
     Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
   (*treats the rule and subgoal as atomic propositions; example:
     resolving rule A ==> B and subgoal A ==> B leads to A ==> A while
     resolving rule A ==> B and subgoal A ==> B atomically solves the subgoal*)
-  val unify_resolve_atomic_tac : Envir_Normalisation.thm_normaliser ->
+  val unify_resolve_atomic_tac : Unification_Base.normalisers ->
     Unification_Base.unifier -> thm -> Proof.context -> int -> tactic
-  val unify_resolve_atomic_every_tac : Envir_Normalisation.thm_normaliser ->
+  val unify_resolve_atomic_every_tac : Unification_Base.normalisers ->
     Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
-  val unify_resolve_atomic_any_tac : Envir_Normalisation.thm_normaliser ->
+  val unify_resolve_atomic_any_tac : Unification_Base.normalisers ->
     Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
 
-  val unify_eresolve_tac_index : Envir_Normalisation.thm_normaliser ->
-    Unification_Base.unifier -> Envir_Normalisation.thm_normaliser -> Unification_Base.unifier -> thm ->
-    Proof.context -> int -> thm -> (int * thm) Seq.seq
-  val unify_eresolve_tac : Envir_Normalisation.thm_normaliser -> Unification_Base.unifier ->
-    Envir_Normalisation.thm_normaliser -> Unification_Base.unifier -> thm ->
+  val unify_eresolve_tac_index : Unification_Base.normalisers -> Unification_Base.unifier ->
+    Unification_Base.normalisers -> Unification_Base.unifier -> thm -> Proof.context ->
+    int -> thm -> (int * thm) Seq.seq
+  val unify_eresolve_tac : Unification_Base.normalisers -> Unification_Base.unifier ->
+    Unification_Base.normalisers -> Unification_Base.unifier -> thm ->
     Proof.context -> int -> tactic
-  val unify_eresolve_every_tac : Envir_Normalisation.thm_normaliser -> Unification_Base.unifier ->
-    Envir_Normalisation.thm_normaliser -> Unification_Base.unifier -> thm list ->
+  val unify_eresolve_every_tac : Unification_Base.normalisers -> Unification_Base.unifier ->
+    Unification_Base.normalisers -> Unification_Base.unifier -> thm list ->
     Proof.context -> int -> tactic
-  val unify_eresolve_any_tac : Envir_Normalisation.thm_normaliser -> Unification_Base.unifier ->
-    Envir_Normalisation.thm_normaliser -> Unification_Base.unifier -> thm list ->
+  val unify_eresolve_any_tac : Unification_Base.normalisers -> Unification_Base.unifier ->
+    Unification_Base.normalisers -> Unification_Base.unifier -> thm list ->
     Proof.context -> int -> tactic
 
-  val unify_dresolve_tac : Envir_Normalisation.thm_normaliser ->
-    Unification_Base.unifier -> thm -> Proof.context -> int -> tactic
-  val unify_dresolve_every_tac : Envir_Normalisation.thm_normaliser ->
-    Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
-  val unify_dresolve_any_tac : Envir_Normalisation.thm_normaliser ->
-    Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
+  val unify_dresolve_tac : Unification_Base.normalisers -> Unification_Base.unifier -> thm ->
+    Proof.context -> int -> tactic
+  val unify_dresolve_every_tac : Unification_Base.normalisers -> Unification_Base.unifier ->
+    thm list -> Proof.context -> int -> tactic
+  val unify_dresolve_any_tac : Unification_Base.normalisers -> Unification_Base.unifier ->
+    thm list -> Proof.context -> int -> tactic
 
-  val unify_fresolve_tac : Envir_Normalisation.thm_normaliser ->
-    Unification_Base.unifier -> thm -> Proof.context -> int -> tactic
-  val unify_fresolve_every_tac : Envir_Normalisation.thm_normaliser ->
-    Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
-  val unify_fresolve_any_tac : Envir_Normalisation.thm_normaliser ->
-    Unification_Base.unifier -> thm list -> Proof.context -> int -> tactic
+  val unify_fresolve_tac : Unification_Base.normalisers -> Unification_Base.unifier -> thm ->
+    Proof.context -> int -> tactic
+  val unify_fresolve_every_tac : Unification_Base.normalisers -> Unification_Base.unifier ->
+    thm list -> Proof.context -> int -> tactic
+  val unify_fresolve_any_tac : Unification_Base.normalisers -> Unification_Base.unifier ->
+    thm list -> Proof.context -> int -> tactic
 
 end
 
@@ -61,7 +61,7 @@ val logger = Logger.setup_new_logger Unification_Base.logger "Unify_Resolve_Base
 structure Util = Unification_Util
 structure HOPU = Higher_Order_Pattern_Unification
 
-fun unify_resolve_tac norm_thm unify rule ctxt =
+fun unify_resolve_tac norms unify rule ctxt =
   let fun tac cgoal i state =
     let
       val _ = @{log Logger.TRACE} ctxt (fn _ =>
@@ -82,40 +82,42 @@ fun unify_resolve_tac norm_thm unify rule ctxt =
       val conclp = (*only unify the conclusion of the rule and the goal*)
         apply2 Logic.strip_assums_concl (Thm.prop_of lifted_rule, Thm.term_of cgoal)
       val env_thmq = unify binders ctxt conclp (Envir.empty (Thm.maxidx_of lifted_rule))
+      val norm_thm = #norm_thm norms
       fun rewrite_tac (env, unif_thm) =
-        Tactic_Util.rewrite_subgoal_unif_concl norm_thm binders (env, unif_thm) ctxt
+        Tactic_Util.rewrite_subgoal_unif_concl norm_thm (#norm_unif_thm norms)
+          binders (env, unif_thm) ctxt
         THEN' Tactic_Util.no_lift_resolve_tac (norm_thm ctxt env lifted_rule) nprems_rule ctxt
     in Seq.maps (fn res => rewrite_tac res i state) env_thmq end
   in Tactic_Util.CSUBGOAL_DATA I tac end
 
-fun unify_resolve_tacs norm_thm unify rules ctxt =
-  map (fn rule => unify_resolve_tac norm_thm unify rule ctxt) rules
+fun unify_resolve_tacs norms unify rules ctxt =
+  map (fn rule => unify_resolve_tac norms unify rule ctxt) rules
 
-fun unify_resolve_every_tac norm_thm unify rules =
-  unify_resolve_tacs norm_thm unify rules #> EVERY'
+fun unify_resolve_every_tac norms unify rules =
+  unify_resolve_tacs norms unify rules #> EVERY'
 
-fun unify_resolve_any_tac norm_thm unify rules =
-  unify_resolve_tacs norm_thm unify rules #> Tactic_Util.CONCAT'
+fun unify_resolve_any_tac norms unify rules =
+  unify_resolve_tacs norms unify rules #> Tactic_Util.CONCAT'
 
-fun unify_resolve_atomic_tac norm_thm unify rule ctxt =
+fun unify_resolve_atomic_tac norms unify rule ctxt =
   Tactic_Util.protect_tac 0 ctxt
-  THEN' unify_resolve_tac norm_thm unify (Thm_Util.protect rule) ctxt
+  THEN' unify_resolve_tac norms unify (Thm_Util.protect rule) ctxt
 
-fun unify_resolve_atomic_tacs norm_thm unify rules ctxt =
-  map (fn rule => unify_resolve_atomic_tac norm_thm unify rule ctxt) rules
+fun unify_resolve_atomic_tacs norms unify rules ctxt =
+  map (fn rule => unify_resolve_atomic_tac norms unify rule ctxt) rules
 
-fun unify_resolve_atomic_every_tac norm_thm unify rules =
-  unify_resolve_atomic_tacs norm_thm unify rules #> EVERY'
+fun unify_resolve_atomic_every_tac norms unify rules =
+  unify_resolve_atomic_tacs norms unify rules #> EVERY'
 
-fun unify_resolve_atomic_any_tac norm_thm unify rules =
-  unify_resolve_atomic_tacs norm_thm unify rules #> Tactic_Util.CONCAT'
+fun unify_resolve_atomic_any_tac norms unify rules =
+  unify_resolve_atomic_tacs norms unify rules #> Tactic_Util.CONCAT'
 
-fun unify_eresolve_tac_index norm_thm_resolve unify_resolve norm_thm_assume unify_assume
+fun unify_eresolve_tac_index norms_resolve unify_resolve norms_assume unify_assume
   rule ctxt i state =
-  unify_resolve_tac norm_thm_resolve unify_resolve rule ctxt i state
-  |> Seq.maps (Unify_Assumption_Base.unify_assumption_tac_index norm_thm_assume unify_assume ctxt i)
+  unify_resolve_tac norms_resolve unify_resolve rule ctxt i state
+  |> Seq.maps (Unify_Assumption_Base.unify_assumption_tac_index norms_assume unify_assume ctxt i)
 
-fun unify_eresolve_tac norm_thm_resolve unify_resolve norm_thm_assume unify_assume
+fun unify_eresolve_tac norms_resolve unify_resolve norms_assume unify_assume
   rule ctxt i state =
   let val nprems = Thm.nprems_of rule
   in
@@ -129,24 +131,24 @@ fun unify_eresolve_tac norm_thm_resolve unify_resolve norm_thm_assume unify_assu
       );
       Seq.empty)
     else
-      unify_eresolve_tac_index norm_thm_resolve unify_resolve norm_thm_assume unify_assume rule ctxt i state
+      unify_eresolve_tac_index norms_resolve unify_resolve norms_assume unify_assume rule ctxt i state
       |> Seq.maps (fn (n, state) =>
         Tactic_Util.EVERY_ARG (Tactic_Util.thin_tac n) (i upto i + nprems - 2) state)
   end
 
-fun unify_eresolve_tacs norm_thm_resolve unify_resolve norm_thm_assume unify_assume rules ctxt =
-  map (fn rule => unify_eresolve_tac norm_thm_resolve unify_resolve norm_thm_assume unify_assume rule ctxt)
+fun unify_eresolve_tacs norms_resolve unify_resolve norms_assume unify_assume rules ctxt =
+  map (fn rule => unify_eresolve_tac norms_resolve unify_resolve norms_assume unify_assume rule ctxt)
     rules
 
-fun unify_eresolve_every_tac norm_thm_resolve unify_resolve norm_thm_assume unify_assume rules =
-  unify_eresolve_tacs norm_thm_resolve unify_resolve norm_thm_assume unify_assume rules
+fun unify_eresolve_every_tac norms_resolve unify_resolve norms_assume unify_assume rules =
+  unify_eresolve_tacs norms_resolve unify_resolve norms_assume unify_assume rules
   #> EVERY'
 
-fun unify_eresolve_any_tac norm_thm_resolve unify_resolve norm_thm_assume unify_assume rules =
-  unify_eresolve_tacs norm_thm_resolve unify_resolve norm_thm_assume unify_assume rules
+fun unify_eresolve_any_tac norms_resolve unify_resolve norms_assume unify_assume rules =
+  unify_eresolve_tacs norms_resolve unify_resolve norms_assume unify_assume rules
   #> Tactic_Util.CONCAT'
 
-fun unify_dresolve_tac norm_thm unify rule ctxt =
+fun unify_dresolve_tac norms unify rule ctxt =
   let val nprems = Thm.nprems_of rule
   in
     if nprems = 0 then
@@ -158,20 +160,18 @@ fun unify_dresolve_tac norm_thm unify rule ctxt =
         ] |> Pretty.string_of
       );
       K no_tac)
-    else
-      unify_eresolve_tac HOPU.norm_thm_unify HOPU.unify norm_thm unify (Tactic.make_elim rule) ctxt
+    else unify_eresolve_tac HOPU.norms_unify HOPU.unify norms unify (Tactic.make_elim rule) ctxt
   end
 
-fun unify_dresolve_tacs norm_thm unify rules ctxt =
-  map (fn rule => unify_dresolve_tac norm_thm unify rule ctxt) rules
+fun unify_dresolve_tacs norms unify rules ctxt =
+  map (fn rule => unify_dresolve_tac norms unify rule ctxt) rules
 
-fun unify_dresolve_every_tac norm_thm unify rules =
-  unify_dresolve_tacs norm_thm unify rules #> EVERY'
+fun unify_dresolve_every_tac norms unify rules = unify_dresolve_tacs norms unify rules #> EVERY'
 
-fun unify_dresolve_any_tac norm_thm unify rules =
-  unify_dresolve_tacs norm_thm unify rules #> Tactic_Util.CONCAT'
+fun unify_dresolve_any_tac norms unify rules =
+  unify_dresolve_tacs norms unify rules #> Tactic_Util.CONCAT'
 
-fun unify_fresolve_tac norm_thm unify rule ctxt i state =
+fun unify_fresolve_tac norms unify rule ctxt i state =
   let val nprems = Thm.nprems_of rule
   in
     if nprems = 0 then
@@ -184,18 +184,18 @@ fun unify_fresolve_tac norm_thm unify rule ctxt i state =
       );
       Seq.empty)
     else
-      unify_eresolve_tac_index HOPU.norm_thm_unify HOPU.unify norm_thm unify (Tactic.make_elim rule)
+      unify_eresolve_tac_index HOPU.norms_unify HOPU.unify norms unify (Tactic.make_elim rule)
         ctxt i state
       |> Seq.map snd
   end
 
-fun unify_fresolve_tacs norm_thm unify rules ctxt =
-  map (fn rule => unify_fresolve_tac norm_thm unify rule ctxt) rules
+fun unify_fresolve_tacs norms unify rules ctxt =
+  map (fn rule => unify_fresolve_tac norms unify rule ctxt) rules
 
-fun unify_fresolve_every_tac norm_thm unify rules =
-  unify_fresolve_tacs norm_thm unify rules #> EVERY'
+fun unify_fresolve_every_tac norms unify rules =
+  unify_fresolve_tacs norms unify rules #> EVERY'
 
-fun unify_fresolve_any_tac norm_thm unify rules =
-  unify_fresolve_tacs norm_thm unify rules #> Tactic_Util.CONCAT'
+fun unify_fresolve_any_tac norms unify rules =
+  unify_fresolve_tacs norms unify rules #> Tactic_Util.CONCAT'
 
 end

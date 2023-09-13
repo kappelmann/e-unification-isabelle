@@ -26,8 +26,7 @@ ML\<open>
     and more_args = \<open>
       structure TI = Discrimination_Tree
       val init_args = {
-        normalisers = SOME (Higher_Order_Pattern_Unification.norm_term_unify,
-          Higher_Order_Pattern_Unification.norm_thm_unify),
+        normalisers = SOME Higher_Order_Pattern_Unification.norms_unify,
         retrieval = SOME (Term_Index_Unification_Hints_Args.mk_sym_retrieval
           TI.norm_term TI.unifiables),
         prems_unifier = NONE,
@@ -36,9 +35,10 @@ ML\<open>
           (Context.the_generic_context ()))
       }\<close>}
   val reify_unify = Unification_Combinator.add_fallback_unifier
-    (Higher_Order_Pattern_Unification.e_unify Unification_Util.unify_types)
+    (fn unif_theory =>
+      Higher_Order_Pattern_Unification.e_unify Unification_Util.unify_types unif_theory unif_theory)
     (Reification_Unification_Hints.try_hints
-      |> Unification_Combinator.norm_unifier Higher_Order_Pattern_Unification.norm_term_unify)
+      |> Unification_Combinator.norm_unifier (#norm_term Higher_Order_Pattern_Unification.norms_unify))
 \<close>
 local_setup \<open>Reification_Unification_Hints.setup_attribute NONE\<close>
 
@@ -111,7 +111,7 @@ declare [[reify_unif_hint where concl_unifier = Higher_Order_Pattern_Unification
 text \<open>However, this also means that we now have to write our hints such that the hint's
 conclusion can successfully be matched against the disagreement terms. In particular,
 the disagreement terms may still contain meta variables that we want to instantiate with the help
-of the unification hints. In some way, a hint then describes a canonical instantiation for
+of the unification hints. Essentially, a hint then describes a canonical instantiation for
 these meta variables.\<close>
 
 experiment

@@ -2,7 +2,7 @@
 subsection \<open>Test Setup\<close>
 theory ML_Unification_Tests_Base
   imports
-    ML_Unification.ML_Unification_Hints
+    ML_Unification_Hints
     SpecCheck.SpecCheck
     Main
 begin
@@ -19,8 +19,7 @@ ML\<open>
       structure TI = Discrimination_Tree
       val init_args = {
         concl_unifier = SOME Higher_Order_Pattern_Unification.match,
-        normalisers = SOME (Envir_Normalisation.beta_eta_short_norm_term_unif,
-          Envir_Normalisation.beta_eta_short_norm_thm_unif),
+        normalisers = SOME Unification_Util.beta_eta_short_norms_unif,
         prems_unifier = SOME Higher_Order_Pattern_Unification.unify,
         retrieval = SOME (Term_Index_Unification_Hints_Args.mk_sym_retrieval
           TI.norm_term TI.generalisations),

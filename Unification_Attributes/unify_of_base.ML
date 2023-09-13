@@ -14,12 +14,12 @@ end
 structure Unify_OF_Base : UNIFY_OF_BASE =
 struct
 
-fun unify_OF f norm_thm unify thms ctxt =
-  map (fn thm => f norm_thm unify thm ctxt) thms |> RANGE |> HEADGOAL |> SINGLE
+fun unify_OF f norms unify thms ctxt =
+  map (fn thm => f norms unify thm ctxt) thms |> RANGE |> HEADGOAL |> SINGLE
 
-fun unify_OF_attribute f norm_thm unify thms = Thm.rule_attribute []
+fun unify_OF_attribute f norms unify thms = Thm.rule_attribute []
   (fn context => fn thm =>
-    unify_OF f norm_thm unify thms (Context.proof_of context) thm
+    unify_OF f norms unify thms (Context.proof_of context) thm
     |> (fn SOME thm => thm | _ => raise THM ("unify_OF: no unifiers", 0, thm :: thms)))
 
 end

@@ -13,13 +13,13 @@ sig
   val try_bool : ('a -> bool) -> 'a -> bool
 
   (*lists*)
-  val insert : 'a ord -> 'a -> 'a list -> 'a list
   val fold_rev_index: (int * 'a -> 'b -> 'b) -> 'a list -> 'b -> 'b
 
   (* sequences *)
   (*raises exception if sequence is empty and returns the sequence otherwise*)
   val seq_try : exn -> 'a Seq.seq -> 'a Seq.seq
   val seq_is_empty : 'a Seq.seq -> (bool * 'a Seq.seq)
+  val seq_merge : 'a ord -> ('a Seq.seq * 'a Seq.seq) -> 'a Seq.seq
 
 end
 
@@ -52,5 +52,16 @@ fun seq_try exn sq = case Seq.pull sq of
 fun seq_is_empty sq = case Seq.pull sq of
     NONE => (true, Seq.empty)
   | SOME v => (false, Seq.make (fn () => SOME v))
+
+fun seq_merge ord (xq, yq) =
+  Seq.make (fn () => (case Seq.pull xq of
+      NONE => Seq.pull yq
+    | SOME (x, xq') => case Seq.pull yq of
+        NONE => Seq.pull xq
+      | SOME (y, yq') => case ord (x, y) of
+          LESS => SOME (x, seq_merge ord (xq', Seq.cons y yq'))
+        | EQUAL => SOME (x, seq_merge ord (xq', Seq.cons y yq'))
+        | GREATER => SOME (y, seq_merge ord (Seq.cons x xq', yq')))
+  )
 
 end

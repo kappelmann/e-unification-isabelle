@@ -3,13 +3,13 @@
 
 Assumption tactic with arguments from context.
 *)
-@{parse_entries (sig) PARSE_UNIFY_ASSUMPTION_ARGS [normaliser, unifier]}
+@{parse_entries (sig) PARSE_UNIFY_ASSUMPTION_ARGS [normalisers, unifier]}
 
 signature UNIFY_ASSUMPTION_ARGS =
 sig
   structure PA : PARSE_UNIFY_ASSUMPTION_ARGS
 
-  type args = (Envir_Normalisation.thm_normaliser, Unification_Base.unifier) PA.entries
+  type args = (Unification_Base.normalisers, Unification_Base.unifier) PA.entries
   val unify_assumption_tac : args -> Proof.context -> int -> tactic
 
   val arg_parsers : (ML_Code_Util.code parser, ML_Code_Util.code parser) PA.entries
@@ -18,15 +18,15 @@ end
 structure Unify_Assumption_Args : UNIFY_ASSUMPTION_ARGS =
 struct
 
-@{parse_entries (struct) PA [normaliser, unifier]}
+@{parse_entries (struct) PA [normalisers, unifier]}
 
-type args = (Envir_Normalisation.thm_normaliser, Unification_Base.unifier) PA.entries
+type args = (Unification_Base.normalisers, Unification_Base.unifier) PA.entries
 
 fun unify_assumption_tac args ctxt =
-  Unify_Assumption_Base.unify_assumption_tac (PA.get_normaliser args) (PA.get_unifier args) ctxt
+  Unify_Assumption_Base.unify_assumption_tac (PA.get_normalisers args) (PA.get_unifier args) ctxt
 
 val arg_parsers = {
-  normaliser = SOME Unification_Parser.parse_thm_normaliser,
+  normalisers = SOME Unification_Parser.parse_normalisers,
   unifier = SOME Unification_Parser.parse_unifier
 }
 
@@ -40,8 +40,8 @@ sig
   val map_args : (Unify_Assumption_Args.args -> Unify_Assumption_Args.args) ->
     Context.generic -> Context.generic
 
-  val get_normaliser : Context.generic -> Envir_Normalisation.thm_normaliser
-  val map_normaliser : (Envir_Normalisation.thm_normaliser -> Envir_Normalisation.thm_normaliser) ->
+  val get_normalisers : Context.generic -> Unification_Base.normalisers
+  val map_normalisers : (Unification_Base.normalisers -> Unification_Base.normalisers) ->
     Context.generic -> Context.generic
 
   val get_unifier : Context.generic -> Unification_Base.unifier
@@ -82,8 +82,8 @@ end)
 val get_args = Data.get
 val map_args = Data.map
 
-val get_normaliser = PA.get_normaliser o get_args
-val map_normaliser = map_args o PA.map_normaliser
+val get_normalisers = PA.get_normalisers o get_args
+val map_normalisers = map_args o PA.map_normalisers
 
 val get_unifier = PA.get_unifier o get_args
 val map_unifier = map_args o PA.map_unifier
@@ -94,7 +94,7 @@ val binding = FIU.mk_binding_id_prefix "uassm"
 
 val parse_arg_entries =
   let
-    val parse_value = PA.parse_entry (PA.get_normaliser UAA.arg_parsers)
+    val parse_value = PA.parse_entry (PA.get_normalisers UAA.arg_parsers)
       (PA.get_unifier UAA.arg_parsers)
     val parse_entry = Parse_Key_Value.parse_entry PA.parse_key Parse_Util.eq parse_value
   in PA.parse_entries_required Parse.and_list1 [] parse_entry (PA.empty_entries ()) end
@@ -103,7 +103,7 @@ fun attribute (entries, pos) =
   let
     fun code_PA_op operation = MCU.flat_read ["Unify_Assumption_Args.PA.", operation]
     val code_from_key = code_PA_op o PA.key_to_string
-    fun code_from_entry (PA.normaliser c) = MCU.atomic c
+    fun code_from_entry (PA.normalisers c) = MCU.atomic c
       | code_from_entry (PA.unifier c) = MCU.atomic c
     val code_entries = PA.key_entry_entries_from_entries entries
       |> map (fn (k, v) => code_from_key k @ code_from_entry v)

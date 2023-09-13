@@ -10,6 +10,8 @@ signature PRIO = sig
   val eq : prio * prio -> bool
   val ord : prio ord
 
+  structure Table : TABLE
+
   val parse : prio context_parser
   val pretty : prio -> Pretty.T
 
@@ -28,6 +30,8 @@ val VERY_HIGH = 2000
 
 val eq = (op =)
 val ord = int_ord o swap
+
+structure Table = Table(type key = prio; val ord = ord)
 
 val pretty = Pretty.str o string_of_int
 val parse = Parse_Util.ML_int (K "priority may not be empty")

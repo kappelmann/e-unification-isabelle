@@ -18,15 +18,15 @@ ML\<open>
   val match_hints =
     let fun match binders =
       UC.add_fallback_matcher
-      (Unif.e_match Unification_Util.match_types)
+      (fn match_theory => Unif.e_match Unification_Util.match_types match_theory match_theory)
       ((fn binders =>
         (Hints.map_retrieval (Hints.mk_retrieval Hints.TI.generalisations |> K)
         #> Hints.UH.map_concl_unifier (Unif.match |> K)
-        #> Hints.UH.map_normalisers ((Unif.norm_term_match, Unif.norm_thm_match) |> K)
+        #> Hints.UH.map_normalisers (Unif.norms_match |> K)
         #> Hints.UH.map_prems_unifier (match |> K))
         |> Context.proof_map
         #> Test_Unification_Hints.try_hints binders)
-        |> UC.norm_matcher Unif.norm_term_match)
+        |> UC.norm_matcher (#norm_term Unif.norms_match))
       binders
     in match [] end
 
@@ -34,14 +34,14 @@ ML\<open>
   val unify_hints =
     let fun unif binders =
       UC.add_fallback_unifier
-      (Unif.e_unify Unification_Util.unify_types)
+      (fn unif_theory => Unif.e_unify Unification_Util.unify_types unif_theory unif_theory)
       ((fn binders =>
         (Hints.UH.map_concl_unifier (Unif.match |> K)
-        #> Hints.UH.map_normalisers ((Unif.norm_term_unify, Unif.norm_thm_unify) |> K)
+        #> Hints.UH.map_normalisers (Unif.norms_unify |> K)
         #> Hints.UH.map_prems_unifier (unif |> K))
         |> Context.proof_map
         #> Test_Unification_Hints.try_hints binders)
-        |> UC.norm_unifier Unif.norm_term_unify)
+        |> UC.norm_unifier (#norm_term Unif.norms_unify))
       binders
     in unif [] end
 \<close>

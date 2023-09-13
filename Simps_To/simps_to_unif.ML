@@ -14,7 +14,7 @@ sig
 
   val mk_SIMPS_TO_UNIF_thm : thm -> thm -> thm
 
-  val SIMPS_TO_UNIF_env_thmsq : (int -> tactic) -> Envir_Normalisation.thm_normaliser ->
+  val SIMPS_TO_UNIF_env_thmsq : (int -> tactic) -> Unification_Base.normalisers ->
     Unification_Base.unifier -> term Binders.binders -> Proof.context -> term * term -> Envir.env ->
     (Envir.env * thm) Seq.seq
 end
@@ -35,7 +35,7 @@ fun mk_SIMPS_TO_UNIF_thm SIMPS_TO_thm eq_thm =
   |> Thm_Util.match_implies_elim SIMPS_TO_thm
   |> Thm_Util.match_implies_elim eq_thm
 
-fun SIMPS_TO_UNIF_env_thmsq simps_to_tac norm_thm unif binders ctxt (lhs, rhs) env =
+fun SIMPS_TO_UNIF_env_thmsq simps_to_tac norms unif binders ctxt (lhs, rhs) env =
   let
     val SIMPS_TO_res = Binders.replace_binders binders lhs
       |> Thm.cterm_of ctxt
@@ -53,7 +53,8 @@ fun SIMPS_TO_UNIF_env_thmsq simps_to_tac norm_thm unif binders ctxt (lhs, rhs) e
         |> Seq.map (pair SIMPS_TO_thm))
       end
     fun SIMPS_TO_UNIF_res (SIMPS_TO_thm, (env, eq_thm)) =
-      let val (SIMPS_TO_thm, eq_thm) = apply2 (norm_thm ctxt env) (SIMPS_TO_thm, eq_thm)
+      let val (SIMPS_TO_thm, eq_thm) =
+        (#norm_thm norms ctxt env SIMPS_TO_thm, #norm_unif_thm norms ctxt env eq_thm)
       in (env, mk_SIMPS_TO_UNIF_thm SIMPS_TO_thm eq_thm) end
   in
     (@{log Logger.DEBUG} ctxt (fn _ => Pretty.block [

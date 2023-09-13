@@ -29,6 +29,12 @@ sig
   (*raises Unification_Base.UNIF on failure*)
   val match_types : Unification_Base.type_matcher
 
+  (* normalisers *)
+  val eta_short_norms_match : Unification_Base.normalisers
+  val beta_eta_short_norms_match : Unification_Base.normalisers
+  val eta_short_norms_unif : Unification_Base.normalisers
+  val beta_eta_short_norms_unif : Unification_Base.normalisers
+
   (* shared standard cases for unifiers *)
   val abstract_abstract : Envir_Normalisation.term_type_normaliser -> Unification_Base.unifier ->
     term Binders.binders -> Proof.context -> string -> typ ->
@@ -57,6 +63,8 @@ structure Unification_Util : UNIFICATION_UTIL =
 struct
 
 val logger = Logger.setup_new_logger Unification_Base.logger "Util"
+
+structure Norm = Envir_Normalisation
 
 (* pretty-printing *)
 local
@@ -135,6 +143,30 @@ fun unify_types ctxt (T, U) (env as Envir.Envir {maxidx, tenv, tyenv}) =
           pretty_types ctxt (map (Envir_Normalisation.norm_type_unif tyenv) [T, U])
         ] |> Pretty.string_of);
     raise Unification_Base.UNIF)
+
+(* normalisers *)
+val eta_short_norms_match = {
+  (*Precondition: the matcher must already normalise the types in its theorem!*)
+  norm_unif_thm = Norm.eta_short_norm_thm (K I) Norm.eta_short_norm_term_match,
+  norm_thm = Norm.eta_short_norm_thm_match,
+  norm_term = Norm.eta_short_norm_term_match
+}
+val beta_eta_short_norms_match = {
+  (*Precondition: the matcher must already normalise the types in its theorem!*)
+  norm_unif_thm = Norm.beta_eta_short_norm_thm (K I) Norm.beta_eta_short_norm_term_match,
+  norm_thm = Norm.beta_eta_short_norm_thm_match,
+  norm_term = Norm.beta_eta_short_norm_term_match
+}
+val eta_short_norms_unif = {
+  norm_unif_thm = Norm.eta_short_norm_thm_unif,
+  norm_thm = Norm.eta_short_norm_thm_unif,
+  norm_term = Norm.eta_short_norm_term_unif
+}
+val beta_eta_short_norms_unif = {
+  norm_unif_thm = Norm.beta_eta_short_norm_thm_unif,
+  norm_thm = Norm.beta_eta_short_norm_thm_unif,
+  norm_term = Norm.beta_eta_short_norm_term_unif
+}
 
 (* shared standard cases for unifiers *)
 

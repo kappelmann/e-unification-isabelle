@@ -6,7 +6,7 @@ Theorem utilities.
 signature THM_UTIL =
 sig
   (*"match_implies_elim prem thm" matches the first premise of thm against prem and then removes
-    the premise*)
+    the premise; without lifting*)
   val match_implies_elim : thm -> thm -> thm
   val protect : thm -> thm
 end

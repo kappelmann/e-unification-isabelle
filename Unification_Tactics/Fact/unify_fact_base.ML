@@ -5,7 +5,7 @@ Fact tactic with adjustable unifier.
 *)
 signature UNIFY_FACT_BASE =
 sig
-  val unify_fact_tac : Envir_Normalisation.thm_normaliser -> Unification_Base.unifier ->
+  val unify_fact_tac : Unification_Base.normalisers -> Unification_Base.unifier ->
     thm list -> Proof.context -> int -> tactic
 end
 

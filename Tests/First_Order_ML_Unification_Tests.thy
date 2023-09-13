@@ -23,12 +23,11 @@ ML\<open>
       ((fn binders =>
         (Hints.map_retrieval (Hints.mk_retrieval Hints.TI.generalisations |> K)
         #> Hints.UH.map_concl_unifier (Higher_Order_Pattern_Unification.match |> K)
-        #> Hints.UH.map_normalisers ((Norm.beta_eta_short_norm_term_match,
-          Norm.beta_eta_short_norm_thm_match) |> K)
+        #> Hints.UH.map_normalisers (Unification_Util.beta_eta_short_norms_match |> K)
         #> Hints.UH.map_prems_unifier (match |> UC.norm_matcher Norm.beta_norm_term_match |> K))
         |> Context.proof_map
         #> Test_Unification_Hints.try_hints binders)
-        |> UC.norm_matcher Unif.norm_term_match)
+        |> UC.norm_matcher (#norm_term Unif.norms_match))
       binders
     in match [] end
 
@@ -39,12 +38,11 @@ ML\<open>
       (Unif.e_unify Unification_Util.unify_types)
       ((fn binders =>
         (Hints.UH.map_concl_unifier (Higher_Order_Pattern_Unification.match |> K)
-        #> Hints.UH.map_normalisers ((Norm.beta_eta_short_norm_term_unif,
-          Norm.beta_eta_short_norm_thm_unif) |> K)
+        #> Hints.UH.map_normalisers (Unification_Util.beta_eta_short_norms_unif |> K)
         #> Hints.UH.map_prems_unifier (unif |> UC.norm_unifier Norm.beta_norm_term_unif |> K))
         |> Context.proof_map
         #> Test_Unification_Hints.try_hints binders)
-        |> UC.norm_unifier Unif.norm_term_unify)
+        |> UC.norm_unifier (#norm_term Unif.norms_unify))
       binders
     in unif [] end
 \<close>
@@ -71,7 +69,8 @@ ML_command\<open>
       ("?g ?x ?y d", "g ?y ?x d"),
       ("f 0 True", "(\<lambda>x y. f y x) True 0"),
       ("\<lambda> (x :: ?'a) y. f y", "\<lambda>(x :: ?'b). f"),
-      ("\<lambda>y z. (?x :: nat \<Rightarrow> bool \<Rightarrow> nat) y z", "f")
+      ("\<lambda>y z. (?x :: nat \<Rightarrow> bool \<Rightarrow> nat) y z", "f"),
+      ("\<lambda>x. (?f :: nat \<Rightarrow> bool \<Rightarrow> nat) 0 x", "\<lambda>x. f 0 x")
     ]
     val check = check_unit_tests_hints_match tests true []
   in
@@ -202,7 +201,9 @@ ML_command\<open>
       ("\<lambda> (x :: nat). x", "\<lambda> (x :: nat). x"),
       ("\<lambda> (x :: nat) (y :: bool). (x, y)", "\<lambda> (x :: nat) (y :: bool). (x, y)"),
       ("\<lambda> (x :: ?'a) y. f y", "\<lambda>(x :: ?'b). f"),
-      ("\<lambda> (x :: nat) (y :: bool). f x y", "\<lambda> (x :: nat) (y :: bool). (?x :: nat \<Rightarrow> bool \<Rightarrow> ?'Z) x y")
+      ("\<lambda> (x :: nat) (y :: bool). f x y", "\<lambda> (x :: nat) (y :: bool). (?x :: nat \<Rightarrow> bool \<Rightarrow> ?'Z) x y"),
+      ("\<lambda>x. (?f :: nat \<Rightarrow> bool \<Rightarrow> nat) 0 x", "\<lambda>x. f ?g x"),
+      ("(?f :: nat \<Rightarrow> bool \<Rightarrow> nat) (?n :: nat)", "?g :: bool \<Rightarrow> nat")
     ]
     val check = check_unit_tests_hints_unif tests true []
   in

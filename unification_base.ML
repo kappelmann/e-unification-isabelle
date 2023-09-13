@@ -31,6 +31,13 @@ sig
   type matcher = unifier
   type e_matcher = matcher -> matcher
 
+  (* normalisers for matchers/unifiers *)
+  type normalisers = {
+    norm_unif_thm : Envir_Normalisation.thm_normaliser,
+    norm_thm : Envir_Normalisation.thm_normaliser,
+    norm_term : Envir_Normalisation.term_normaliser
+  }
+
 end
 
 structure Unification_Base : UNIFICATION_BASE =
@@ -57,5 +64,11 @@ type e_unifier = unifier -> unifier
 type closed_matcher = closed_unifier
 type matcher = unifier
 type e_matcher = matcher -> matcher
+
+type normalisers = {
+  norm_unif_thm : Envir_Normalisation.thm_normaliser,
+  norm_thm : Envir_Normalisation.thm_normaliser,
+  norm_term : Envir_Normalisation.term_normaliser
+}
 
 end

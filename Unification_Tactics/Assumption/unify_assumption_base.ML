@@ -7,9 +7,9 @@ signature UNIFY_ASSUMPTION_BASE =
 sig
   include HAS_LOGGER
 
-  val unify_assumption_tac_index : Envir_Normalisation.thm_normaliser -> Unification_Base.unifier ->
+  val unify_assumption_tac_index : Unification_Base.normalisers -> Unification_Base.unifier ->
     Proof.context -> int -> thm -> (int * thm) Seq.seq
-  val unify_assumption_tac : Envir_Normalisation.thm_normaliser -> Unification_Base.unifier ->
+  val unify_assumption_tac : Unification_Base.normalisers -> Unification_Base.unifier ->
     Proof.context -> int -> tactic
 end
 
@@ -70,7 +70,7 @@ fun unify_assumption unify ctxt i state =
   handle TERM _ => Seq.empty
 in
 
-fun unify_assumption_tac_index norm_thm unify ctxt i state =
+fun unify_assumption_tac_index norms unify ctxt i state =
   let
     val _ = @{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
         Pretty.str "Trying proof by assumption for subgoal ",
@@ -81,13 +81,15 @@ fun unify_assumption_tac_index norm_thm unify ctxt i state =
       ] |> Pretty.string_of)
     fun rewrite_subgoal ((n, binders), (res, state)) =
       (*rewrite conclusion to match the premise*)
-      Tactic_Util.rewrite_subgoal_unif_concl norm_thm binders res ctxt i state
+      Tactic_Util.rewrite_subgoal_unif_concl (#norm_thm norms) (#norm_unif_thm norms)
+        binders res ctxt i state
       (*unified premise is moved to the front; now close by equality assumption*)
       |> Seq.maps (DETERM (Tactic_Util.nth_eq_assume_tac 1 i))
       |> Seq.map (pair n)
   in unify_assumption unify ctxt i state |> Seq.maps rewrite_subgoal end
 
-fun unify_assumption_tac norm_thm = Seq.map snd oooo unify_assumption_tac_index norm_thm
+fun unify_assumption_tac norms =
+  Seq.map snd oooo unify_assumption_tac_index norms
 
 end
 

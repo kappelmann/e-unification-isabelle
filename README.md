@@ -16,7 +16,10 @@ Unification hints are a flexible extension for unifiers.
 Among other things, they can be used for reflective tactics,
 to provide canonical unification instances,
 or to simply strengthen the background theory of a unifier in a controlled manner.
-4. A hierarchical logger for Isabelle/ML,
+4. Simplifier integration for e-unifiers.
+5. Practical combinations of unification algorithms, e.g. a combination of first-order and
+higher-order pattern unification.
+6. A hierarchical logger for Isabelle/ML,
 including per logger configurations with log levels, output channels, message filters.
 See `Logger/README.md` for details.
 

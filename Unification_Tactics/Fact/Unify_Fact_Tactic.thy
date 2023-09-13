@@ -16,8 +16,8 @@ ML\<open>
     and functor_name = Unify_Fact
     and id = \<open>""\<close>
     and more_args = \<open>val init_args = {
-      normaliser = SOME Standard_Mixed_Unification.norm_thm_first_higherp_comb_higher_unify,
-      unifier = SOME Standard_Mixed_Unification.first_higherp_comb_higher_unify
+      normalisers = SOME Standard_Mixed_Unification.norms_first_higherp_first_comb_higher_unify,
+      unifier = SOME Standard_Mixed_Unification.first_higherp_first_comb_higher_unify
     }\<close>}
 \<close>
 local_setup \<open>Standard_Unify_Fact.setup_attribute NONE\<close>

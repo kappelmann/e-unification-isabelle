@@ -15,8 +15,8 @@ ML\<open>
     and functor_name = Unify_OF
     and id = \<open>""\<close>
     and more_args = \<open>val init_args = {
-      normaliser = SOME Standard_Mixed_Unification.norm_thm_first_higherp_comb_higher_unify,
-      unifier = SOME Standard_Mixed_Unification.first_higherp_comb_higher_unify,
+      normalisers = SOME Standard_Mixed_Unification.norms_first_higherp_first_comb_higher_unify,
+      unifier = SOME Standard_Mixed_Unification.first_higherp_first_comb_higher_unify,
       mode = SOME (Unify_OF_Args.PM.key Unify_OF_Args.PM.fact)
     }\<close>}
 \<close>

@@ -4,9 +4,9 @@
 OF attribute with arguments from context.
 *)
 @{parse_entries (sig) PARSE_UNIFY_OF_ARGS
-  [normaliser, unifier, mode, rules]}
+  [normalisers, unifier, mode, rules]}
 @{parse_entries (sig) PARSE_UNIFY_OF_CONTEXT_ARGS
-  [normaliser, unifier, mode]}
+  [normalisers, unifier, mode]}
 
 @{parse_entries (sig) PARSE_UNIFY_OF_MODES [resolve, fact]}
 
@@ -22,9 +22,9 @@ sig
   type mode = PM.key
   val parse_mode : mode parser
 
-  type args = (Envir_Normalisation.thm_normaliser, Unification_Base.unifier, mode, thm list)
+  type args = (Unification_Base.normalisers, Unification_Base.unifier, mode, thm list)
     PA.entries
-  type context_args = (Envir_Normalisation.thm_normaliser, Unification_Base.unifier, mode)
+  type context_args = (Unification_Base.normalisers, Unification_Base.unifier, mode)
     PCA.entries
 
   val unify_OF : args -> Proof.context -> thm -> thm option
@@ -43,29 +43,29 @@ struct
 structure URB = Unify_Resolve_Base
 
 @{parse_entries (struct) PA
-  [normaliser, unifier, mode, rules]}
+  [normalisers, unifier, mode, rules]}
 @{parse_entries (struct) PCA
-  [normaliser, unifier, mode]}
+  [normalisers, unifier, mode]}
 
-fun PCA_entries_from_PA_entries {normaliser = normaliser, unifier = unifier, mode = mode,...} =
-  {normaliser = normaliser, unifier = unifier, mode = mode}
-fun PA_entries_from_PCA_entries {normaliser = normaliser, unifier = unifier, mode = mode} rules =
-  {normaliser = normaliser, unifier = unifier, mode = mode, rules = SOME rules}
+fun PCA_entries_from_PA_entries {normalisers = normalisers, unifier = unifier, mode = mode,...} =
+  {normalisers = normalisers, unifier = unifier, mode = mode}
+fun PA_entries_from_PCA_entries {normalisers = normalisers, unifier = unifier, mode = mode} rules =
+  {normalisers = normalisers, unifier = unifier, mode = mode, rules = SOME rules}
 
 @{parse_entries (struct) PM [resolve, fact]}
 type mode = PM.key
 val parse_mode = PM.parse_key
 
-type args = (Envir_Normalisation.thm_normaliser, Unification_Base.unifier, mode, thm list)
+type args = (Unification_Base.normalisers, Unification_Base.unifier, mode, thm list)
   PA.entries
-type context_args = (Envir_Normalisation.thm_normaliser, Unification_Base.unifier, mode)
+type context_args = (Unification_Base.normalisers, Unification_Base.unifier, mode)
   PCA.entries
 
 fun gen_unify_of unify_OF_fn args =
   let val resolve_fn = case PA.get_mode args of
       PM.resolve _ => URB.unify_resolve_tac
     | PM.fact _ => URB.unify_resolve_atomic_tac
-  in unify_OF_fn resolve_fn (PA.get_normaliser args) (PA.get_unifier args) (PA.get_rules args) end
+  in unify_OF_fn resolve_fn (PA.get_normalisers args) (PA.get_unifier args) (PA.get_rules args) end
 
 val unify_OF = gen_unify_of Unify_OF_Base.unify_OF
 val unify_OF_context_args = unify_OF oo PA_entries_from_PCA_entries
@@ -74,7 +74,7 @@ val unify_OF_attribute = gen_unify_of Unify_OF_Base.unify_OF_attribute
 val unify_OF_context_args_attribute = unify_OF_attribute oo PA_entries_from_PCA_entries
 
 val arg_parsers = {
-  normaliser = SOME Unification_Parser.parse_thm_normaliser,
+  normalisers = SOME Unification_Parser.parse_normalisers,
   unifier = SOME Unification_Parser.parse_unifier,
   mode = SOME parse_mode,
   rules = SOME Parse_Util.thms
@@ -90,8 +90,8 @@ sig
   val map_args : (Unify_OF_Args.context_args -> Unify_OF_Args.context_args) ->
     Context.generic -> Context.generic
 
-  val get_normaliser : Context.generic -> Envir_Normalisation.thm_normaliser
-  val map_normaliser : (Envir_Normalisation.thm_normaliser -> Envir_Normalisation.thm_normaliser) ->
+  val get_normalisers : Context.generic -> Unification_Base.normalisers
+  val map_normalisers : (Unification_Base.normalisers -> Unification_Base.normalisers) ->
     Context.generic -> Context.generic
 
   val get_unifier : Context.generic -> Unification_Base.unifier
@@ -136,8 +136,8 @@ end)
 val get_args = Data.get
 val map_args = Data.map
 
-val get_normaliser = PCA.get_normaliser o get_args
-val map_normaliser = map_args o PCA.map_normaliser
+val get_normalisers = PCA.get_normalisers o get_args
+val map_normalisers = map_args o PCA.map_normalisers
 
 val get_unifier = PCA.get_unifier o get_args
 val map_unifier = map_args o PCA.map_unifier
@@ -155,7 +155,7 @@ val binding = FIU.mk_binding_id_prefix "uOF"
 val parse_arg_entries =
   let
     val parsers = UOA.arg_parsers |> UOA.PCA_entries_from_PA_entries
-    val parse_value = PCA.parse_entry (PCA.get_normaliser parsers)
+    val parse_value = PCA.parse_entry (PCA.get_normalisers parsers)
       (PCA.get_unifier parsers) (PCA.get_mode parsers)
     val parse_entry = Parse_Key_Value.parse_entry PCA.parse_key Parse_Util.eq parse_value
   in PCA.parse_entries_required Parse.and_list1 [] parse_entry (PCA.empty_entries ()) end
@@ -166,7 +166,7 @@ fun set_args_attribute (entries, pos) =
       MCU.flat_read ["Unify_OF_Args.", substructure, ".", operation]
     val (code_PM_op, code_PCA_op) = apply2 UOA_substructure_op ("PM", "PCA")
     val code_from_key = code_PCA_op o PCA.key_to_string
-    fun code_from_entry (PCA.normaliser c) = c
+    fun code_from_entry (PCA.normalisers c) = c
       | code_from_entry (PCA.unifier c) = c
       | code_from_entry (PCA.mode m) = code_PM_op "key" @ code_PM_op (UOA.PM.key_to_string m)
     val code_entries = PCA.key_entry_entries_from_entries entries

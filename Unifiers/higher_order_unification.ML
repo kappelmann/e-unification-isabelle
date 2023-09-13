@@ -11,6 +11,7 @@ sig
   include HAS_LOGGER
 
   val unify : Unification_Base.unifier
+  val norms : Unification_Base.normalisers
 end
 
 structure Higher_Order_Unification : HIGHER_ORDER_UNIFICATION =
@@ -51,6 +52,8 @@ fun unify binders ctxt tp env =
     unif (Util.unify_types ctxt (apply2 Term.fastype_of tp) env))
     handle Unification_Base.UNIF => Seq.empty) (*types do not match*)
   end
+
+val norms = Unification_Util.beta_eta_short_norms_unif
 
 end
 

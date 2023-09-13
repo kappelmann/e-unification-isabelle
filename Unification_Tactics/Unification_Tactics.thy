@@ -10,5 +10,4 @@ begin
 paragraph \<open>Summary\<close>
 text \<open>Tactics with adjustable unifiers.\<close>
 
-
 end

@@ -13,13 +13,16 @@ sig
   val SIMPS_TO_unify : thm -> Unification_Base.closed_unifier
   (*solves "SIMPS_TO_UNIF s t \<equiv> rhs" via simplification of s to s', followed by unification of
     "s' \<equiv>\<^sup>? t", when given a matching theorem "SIMPS_TO_UNIF s t \<Longrightarrow> SIMPS_TO_UNIF s t \<equiv> rhs"*)
-  val SIMPS_TO_UNIF_unify : thm -> Envir_Normalisation.thm_normaliser -> Unification_Base.e_unifier
+  val SIMPS_TO_UNIF_unify : thm -> Unification_Base.normalisers -> Unification_Base.e_unifier
 end
 
 structure Simplifier_Unification : SIMPLIFIER_UNIFICATION =
 struct
 
 val logger = Logger.setup_new_logger Unification_Base.logger "Simplifier_Unification"
+
+(*some "safe" solvers create instantiations via flex-flex pairs, which we disallow*)
+val safe_simp_tac = Tactic_Util.safe_simp_tac
 
 fun simp_unify ctxt tp =
   (@{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
@@ -47,14 +50,14 @@ fun SIMPS_TO_unify preprocess_rule ctxt =
     else K no_tac
   in Tactic_Unification.unify (Tactic_Unification.env_tac_from_no_inst_tac o tac) ctxt end
 
-fun SIMPS_TO_UNIF_unify preprocess_rule norm_thm unif binders ctxt =
+fun SIMPS_TO_UNIF_unify preprocess_rule norms unif binders ctxt =
   let fun tac ctxt (tp as (lhs, _)) i (env, state) =
     (let
       val simps_to_tp = Simps_To_Unif.dest_SIMPS_TO_UNIF lhs
       fun solve_tac state =
-        Simps_To_Unif.SIMPS_TO_UNIF_env_thmsq (safe_simp_tac ctxt) norm_thm unif binders ctxt
+        Simps_To_Unif.SIMPS_TO_UNIF_env_thmsq (safe_simp_tac ctxt) norms unif binders ctxt
           simps_to_tp env
-        |> Seq.map (fn (env, thm) => (env, norm_thm ctxt env state |> Thm.elim_implies thm))
+        |> Seq.map (fn (env, thm) => (env, #norm_thm norms ctxt env state |> Thm.elim_implies thm))
     in
       (@{log Logger.DEBUG} ctxt (fn _ => Pretty.block [
           Pretty.str "Solving ",

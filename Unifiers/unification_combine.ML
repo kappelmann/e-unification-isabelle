@@ -32,13 +32,13 @@ sig
   val eunif_data_metadata : eunif_data -> metadata
   val pretty_eunif_data : eunif_data -> Pretty.T
 
+  type eunif_datas = eunif_data list Prio.Table.table
   (*storing the e-unifiers and metadata*)
   structure Data : GENERIC_DATA
 
-  val get_eunif_datas : Context.generic -> eunif_data list
-  val map_eunif_datas : (eunif_data list -> eunif_data list) -> Context.generic -> Context.generic
+  val get_eunif_datas : Context.generic -> eunif_datas
+  val map_eunif_datas : (eunif_datas -> eunif_datas) -> Context.generic -> Context.generic
   val insert_eunif_data : eunif_data -> Context.generic -> Context.generic
-  val filter_eunif_data : (eunif_data -> bool) -> Context.generic -> Context.generic
   val delete_eunif_data : metadata -> Context.generic -> Context.generic
 
   val pretty_data : Proof.context -> Pretty.T
@@ -79,8 +79,7 @@ fun dest_metadata (Metadata meta) = meta
 fun metadata_binding (Metadata (binding, _)) = binding
 fun metadata_prio (Metadata (_, prio)) = prio
 
-(*we ignore the priority: the same binding with different priorities should be a duplicate*)
-val eq_metadata = eq_binding o apply2 metadata_binding
+val eq_metadata = eq_pair eq_binding Prio.eq o apply2 dest_metadata
 fun pretty_metadata (Metadata (binding, prio))= Pretty.block [
     Pretty.str "Binding: ",
     pretty_binding binding,
@@ -96,41 +95,59 @@ fun eunif_data unify meta = EUnif_Data (unify, meta)
 fun dest_eunif_data (EUnif_Data data) = data
 fun eunif_data_e_unifier (EUnif_Data (unify, _)) = unify
 fun eunif_data_metadata (EUnif_Data (_, meta)) = meta
+val eunif_data_prio = eunif_data_metadata #> metadata_prio
 
 val eq_eunif_data = eq_metadata o apply2 eunif_data_metadata
 fun pretty_eunif_data (EUnif_Data (_, meta)) = pretty_metadata meta
 
-val eunif_data_ord = Prio.ord o apply2 (metadata_prio o eunif_data_metadata)
-val sort_eunif_datas = sort eunif_data_ord
+type eunif_datas = eunif_data list Prio.Table.table
 
 (*invariant: data is sorted with respect to the priorities*)
 structure Data = Generic_Data(struct
-  type T = eunif_data list
-  val empty = []
-  val merge = sort_eunif_datas o merge eq_eunif_data
+  type T = eunif_datas
+  val empty = Prio.Table.empty
+  val merge = Prio.Table.merge_list eq_eunif_data
 end)
 
 val get_eunif_datas = Data.get
-val get_e_unifiers = map eunif_data_e_unifier o get_eunif_datas
+val get_e_unifiers = map (eunif_data_e_unifier o snd) o Prio.Table.dest_list o get_eunif_datas
+val map_eunif_datas = Data.map
 
-fun map_eunif_datas f = Data.map (sort_eunif_datas o f)
+fun insert_eunif_data data context =
+  let val prio = eunif_data_prio data
+  in
+    Data.map (fn datas =>
+      if member eq_eunif_data (Prio.Table.lookup_list datas prio) data
+      then (@{log Logger.WARN} (Context.proof_of context) (fn _ =>
+        Pretty.block [
+          Pretty.str "eunif data (",
+          pretty_eunif_data data,
+          Pretty.str ") already added."
+        ] |> Pretty.string_of);
+        datas)
+      else Prio.Table.insert_list eq_eunif_data (prio, data) datas
+    ) context
+  end
 
-fun insert_eunif_data data context = Data.map (fn datas =>
-  if member eq_eunif_data datas data
-  then (@{log Logger.WARN} (Context.proof_of context) (fn _ =>
-    Pretty.block [
-      Pretty.str "eunif data (",
-      pretty_eunif_data data,
-      Pretty.str ") already added."
-    ] |> Pretty.string_of);
-    datas)
-  else General_Util.insert eunif_data_ord data datas) context
-
-val filter_eunif_data = Data.map o filter
-fun delete_eunif_data metadata = filter_eunif_data (not o curry eq_metadata metadata o eunif_data_metadata)
+fun delete_eunif_data metadata context =
+  let val prio = metadata_prio metadata
+  in
+    Data.map (fn datas =>
+      if member eq_metadata (Prio.Table.lookup_list datas prio |> map eunif_data_metadata) metadata
+      then Prio.Table.remove_list (eq_metadata o apsnd eunif_data_metadata) (prio, metadata) datas
+      else (@{log Logger.WARN} (Context.proof_of context) (fn _ =>
+        Pretty.block [
+          Pretty.str "metadata (",
+          pretty_metadata metadata,
+          Pretty.str ") not found."
+        ] |> Pretty.string_of);
+        datas)
+    ) context
+  end
 
 fun pretty_data ctxt = get_eunif_datas (Context.Proof ctxt)
-  |> map pretty_eunif_data
+  |> Prio.Table.dest_list
+  |> map (pretty_eunif_data o snd)
   |> Pretty.fbreaks
   |> Pretty.block
 

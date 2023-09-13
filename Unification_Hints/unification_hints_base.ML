@@ -24,14 +24,13 @@ sig
   type hint_preprocessor = Proof.context -> thm -> unif_hint
   val obj_logic_hint_preprocessor : thm -> conv -> hint_preprocessor
 
-  val try_hint : Unification_Base.matcher -> Envir_Normalisation.term_normaliser ->
-    Envir_Normalisation.thm_normaliser -> unif_hint -> Unification_Base.e_unifier
+  val try_hint : Unification_Base.matcher -> Unification_Base.normalisers -> unif_hint ->
+    Unification_Base.e_unifier
 
   type hint_retrieval = term Binders.binders -> Proof.context -> term * term -> Envir.env ->
     unif_hint Seq.seq
 
-  val try_hints : hint_retrieval -> Unification_Base.matcher ->
-    Envir_Normalisation.term_normaliser -> Envir_Normalisation.thm_normaliser ->
+  val try_hints : hint_retrieval -> Unification_Base.matcher -> Unification_Base.normalisers ->
     Unification_Base.e_unifier
 end
 
@@ -65,9 +64,9 @@ fun obj_logic_hint_preprocessor eq_eq_meta_eq default_conv ctxt =
 Vars in hint are lifted wrt. the passed binders.
 Unifies the hint's conclusion with (t1, t2) using match.
 Unifies resulting unification problems using unify.
-Normalises the terms and theorems after unify with norm_thm_unif.
+Normalises the terms and theorems after unify with norms.
 Returns a sequence of (env, thm) pairs.*)
-fun try_hint match norm_term_unif norm_thm_unif hint unify binders ctxt (t1, t2)
+fun try_hint match norms hint unify binders ctxt (t1, t2)
   (Envir.Envir {maxidx, tenv, tyenv}) =
   let
     val dest_all_equals = TUtil.strip_all ##> Logic.dest_equals
@@ -115,13 +114,13 @@ fun try_hint match norm_term_unif norm_thm_unif hint unify binders ctxt (t1, t2)
         fun inst_discharge ((env_res, prem_thms), concl_thmp) =
           let
             (*instantiate the theorems*)
-            val norm_thm_unif = norm_thm_unif ctxt env_res
-            val lifted_hint_inst = norm_thm_unif lifted_hint
-            val norm_term_unif = norm_term_unif env_res
-            val mk_norm_cbinders = map (Thm.cterm_of ctxt o norm_term_unif o snd)
-            fun forall_intr binders = fold Thm.forall_intr (mk_norm_cbinders binders) o norm_thm_unif
+            val lifted_hint_inst = #norm_thm norms ctxt env_res lifted_hint
+            val norm_term = #norm_term norms env_res
+            val mk_norm_cbinders = map (Thm.cterm_of ctxt o norm_term o snd)
+            val norm_unif_thm = #norm_unif_thm norms ctxt env_res
+            fun forall_intr binders = fold Thm.forall_intr (mk_norm_cbinders binders) o norm_unif_thm
             val prem_thms_inst = map (uncurry forall_intr) prem_thms |> rev
-            val (concl_thmL, concl_thmR) = apply2 norm_thm_unif concl_thmp
+            val (concl_thmL, concl_thmR) = apply2 norm_unif_thm concl_thmp
             (*discharge the hint premises*)
             val thm_res = Drule.implies_elim_list lifted_hint_inst prem_thms_inst
               |> Drule.forall_elim_list (mk_norm_cbinders rev_binders)
@@ -134,14 +133,13 @@ fun try_hint match norm_term_unif norm_thm_unif hint unify binders ctxt (t1, t2)
 type hint_retrieval = term Binders.binders -> Proof.context -> term * term -> Envir.env ->
   unif_hint Seq.seq
 
-fun try_hints get_hints match norm_term_unif norm_thm_unif unif binders ctxt (t1, t2) env =
+fun try_hints get_hints match norms unif binders ctxt (t1, t2) env =
   (@{log Logger.DEBUG} ctxt (fn _ =>
     Pretty.block [
       Pretty.str "Trying unification hints for ",
       Unification_Util.pretty_unif_problem ctxt (t1, t2)
     ] |> Pretty.string_of);
   get_hints binders ctxt (t1, t2) env
-  |> Seq.maps (fn hint => try_hint match norm_term_unif norm_thm_unif
-    hint unif binders ctxt (t1, t2) env))
+  |> Seq.maps (fn hint => try_hint match norms hint unif binders ctxt (t1, t2) env))
 
 end

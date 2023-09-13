@@ -73,7 +73,7 @@ end
 structure Parse_Util : PARSE_UTIL =
 struct
 
-(*TODO: move to Isabelle kernel*)
+(*FIXME: move to Isabelle kernel?*)
 fun get_tokens_pos [] = " (end-of-input)"
   | get_tokens_pos (tok :: _) = Position.here (Token.pos_of tok);
 

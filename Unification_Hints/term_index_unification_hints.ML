@@ -38,18 +38,15 @@ sig
   val mk_sym_retrieval : Term_Normalisation.term_normaliser -> ('ti -> term -> hint_prio list) ->
     'ti -> Unification_Hints_Base.hint_retrieval
 
-  type 'ti args = (Unification_Base.unifier,
-    (Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser),
-    Unification_Base.unifier, 'ti -> Unification_Hints_Base.hint_retrieval,
-    Unification_Hints_Base.hint_preprocessor, Prio.prio) PA.entries
-  type 'ti context_args = (Unification_Base.unifier,
-    (Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser),
+  type 'ti args = (Unification_Base.unifier, Unification_Base.normalisers, Unification_Base.unifier,
+    'ti -> Unification_Hints_Base.hint_retrieval, Unification_Hints_Base.hint_preprocessor,
+    Prio.prio) PA.entries
+  type 'ti context_args = (Unification_Base.unifier, Unification_Base.normalisers,
     Unification_Base.unifier, 'ti -> Unification_Hints_Base.hint_retrieval,
     Unification_Hints_Base.hint_preprocessor) PCA.entries
 
   val arg_parsers : (ML_Code_Util.code parser, ML_Code_Util.code parser, ML_Code_Util.code parser,
-    ML_Code_Util.code parser, ML_Code_Util.code parser,
-    Prio.prio context_parser) PA.entries
+    ML_Code_Util.code parser, ML_Code_Util.code parser, Prio.prio context_parser) PA.entries
 end
 
 structure Term_Index_Unification_Hints_Args : TERM_INDEX_UNIFICATION_HINTS_ARGS =
@@ -92,6 +89,7 @@ fun pretty_hint_prio ctxt (hint, prio) = Pretty.block [
     Pretty.enclose " (" ")" [Pretty.str "priority: ", Prio.pretty prio]
   ]
 
+(*FIXME: use Prio.Table instead of sorted lists*)
 val sort_hint_prios = sort (Prio.ord o apply2 snd)
 
 val hint_seq_of_hint_prios =
@@ -114,10 +112,10 @@ fun mk_sym_retrieval norm_term retrieve ti _ _ (t1, t2) _ =
     (norm_term t2 |> retrieve ti |> map (apfst Unification_Hints_Base.symmetric_hint))
   |> hint_seq_of_hint_prios
 
-type 'ti args = (UB.unifier, (EN.term_normaliser * EN.thm_normaliser), UB.unifier,
-  'ti -> UHB.hint_retrieval, UHB.hint_preprocessor, TUHP.prio) PA.entries
-type 'ti context_args = (UB.unifier, (EN.term_normaliser * EN.thm_normaliser), UB.unifier,
-  'ti -> UHB.hint_retrieval, UHB.hint_preprocessor) PCA.entries
+type 'ti args = (UB.unifier, UB.normalisers, UB.unifier, 'ti -> UHB.hint_retrieval,
+  UHB.hint_preprocessor, TUHP.prio) PA.entries
+type 'ti context_args = (UB.unifier, UB.normalisers, UB.unifier, 'ti -> UHB.hint_retrieval,
+  UHB.hint_preprocessor) PCA.entries
 
 val arg_parsers = {
     concl_unifier = UHA.PA.get_concl_unifier_safe UHA.arg_parsers,

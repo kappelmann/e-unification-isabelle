@@ -37,6 +37,8 @@ sig
   val thin_tac : int -> int -> tactic
   val thin_tacs : int list -> int -> tactic
 
+  val safe_simp_tac : Proof.context -> int -> tactic
+
   (*nth_eq_assume_tac n i solves ith subgoal by assumption, without unification,
     preferring premise n*)
   val nth_eq_assume_tac : int -> int -> tactic
@@ -54,7 +56,8 @@ sig
 
   (*rewrite a subgoal given an equality theorem and environment for the subgoal's conclusion*)
   val rewrite_subgoal_unif_concl : Envir_Normalisation.thm_normaliser ->
-    term Binders.binders -> (Envir.env * thm) -> Proof.context -> int -> tactic
+    Envir_Normalisation.thm_normaliser -> term Binders.binders -> (Envir.env * thm) ->
+    Proof.context -> int -> tactic
 
   (*protect premises starting from (and excluding) the given index in the specified subgoal*)
   val protect_tac : int -> Proof.context -> int -> tactic
@@ -115,6 +118,13 @@ val thin_tacs = sort int_ord
   #> map_index ((op -) o swap)
   #> EVERY_ARG' thin_tac
 
+(*some "safe" solvers create instantiations via flex-flex pairs, which we disallow here*)
+fun safe_simp_tac ctxt i state =
+  let val eq_flexps = Thm.tpairs_of
+    #> pair (Thm.tpairs_of state)
+    #> eq_list (eq_pair (op aconv) (op aconv))
+  in Simplifier.safe_simp_tac ctxt i state |> Seq.filter eq_flexps end
+
 fun nth_eq_assume_tac n = if n < 1 then K no_tac
   else rotate_tac (n - 1) THEN' eq_assume_tac
 
@@ -149,9 +159,8 @@ fun eq_subgoal_from_eq_concl cbinders cprems eq_thm ctxt =
     |> fold all_abstract cbinders
   end
 
-fun rewrite_subgoal_unif_concl norm_thm binders (env, unif_thm) ctxt i state =
+fun rewrite_subgoal_unif_concl norm_state norm_eq_thm binders (env, eq_thm) ctxt i state =
   let
-    val norm_thm = norm_thm ctxt env
     fun rewrite_tac (rparams, (prems, _)) =
       let
         (*update binders with their normalised type*)
@@ -160,10 +169,10 @@ fun rewrite_subgoal_unif_concl norm_thm binders (env, unif_thm) ctxt i state =
         val cterm_of = Thm.cterm_of ctxt
         val cprems = map (cterm_of o Binders.replace_binders binders) prems
         val eq_thm = eq_subgoal_from_eq_concl (map (apsnd cterm_of) binders) cprems
-          (norm_thm unif_thm) ctxt
+          (norm_eq_thm ctxt env eq_thm) ctxt
       in rewrite_subgoal_tac eq_thm ctxt end
   in
-    ((PRIMITIVE norm_thm |> K)
+    ((PRIMITIVE (norm_state ctxt env) |> K)
     THEN' SUBGOAL_STRIPPED I rewrite_tac) i state
   end
 

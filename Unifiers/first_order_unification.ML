@@ -10,18 +10,12 @@ sig
   (* e-matching *)
   val e_match : Unification_Base.type_matcher -> Unification_Base.e_matcher
   val match : Unification_Base.matcher
-
-  (*the normalisers that should be used with match*)
-  val norm_term_match : Envir_Normalisation.term_normaliser
-  val norm_thm_match : Envir_Normalisation.thm_normaliser
+  val norms_match : Unification_Base.normalisers
 
   (* e-unification *)
   val e_unify : Unification_Base.type_unifier -> Unification_Base.e_unifier
   val unify : Unification_Base.unifier
-
-  (*the normalisers that should be used with unify*)
-  val norm_term_unify : Envir_Normalisation.term_normaliser
-  val norm_thm_unify : Envir_Normalisation.thm_normaliser
+  val norms_unify : Unification_Base.normalisers
 end
 
 structure First_Order_Unification : FIRST_ORDER_UNIFICATION =
@@ -38,16 +32,16 @@ exception FALLBACK
 (*check if sequence is empty or raise FALLBACK exception*)
 fun seq_try sq = General_Util.seq_try FALLBACK sq
 
-val norm_term_match = Norm.eta_short_norm_term_match
-(*match already normalises the types*)
-val norm_thm_match = Norm.eta_short_norm_thm (K I) norm_term_match
 
 (* e-matching *)
+
+val norms_match = Util.eta_short_norms_match
+
 (*Note: by E-matching we mean "matching modulo equalities" in the general sense,
 i.e. when matching p \<equiv>? t, t may contain variables.*)
 fun e_match match_types match_theory binders ctxt pt env =
   let
-    val norm_pt = apfst o norm_term_match
+    val norm_pt = apfst o (#norm_term norms_match)
     fun rigid_rigid ctxt p n env = (*normalise the types in rigid-rigid cases*)
       Util.rigid_rigid Norm.norm_term_types_match match_types ctxt p n env |> seq_try
       handle Unification_Base.UNIF => Seq.empty (*types do not match*)
@@ -146,12 +140,11 @@ fun occurs v (Var (x, _)) = x = v
   | occurs v (Abs (_, _, t)) = occurs v t
   | occurs _ _ = false
 
-val norm_term_unify = Norm.eta_short_norm_term_unif
-val norm_thm_unify = Norm.eta_short_norm_thm_unif
+val norms_unify = Util.eta_short_norms_unif
 
 fun e_unify unify_types unify_theory binders ctxt st env =
   let
-    val norm_st = apply2 o norm_term_unify
+    val norm_st = apply2 o (#norm_term norms_unify)
     fun rigid_rigid ctxt t n env = (*we do not have to normalise types in rigid-rigid cases*)
       Util.rigid_rigid (K I) unify_types ctxt t n env |> seq_try
       handle Unification_Base.UNIF => Seq.empty (*types do not unify*)

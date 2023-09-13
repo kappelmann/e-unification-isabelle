@@ -10,9 +10,8 @@ signature UNIFICATION_HINTS_ARGS =
 sig
   structure PA : PARSE_UNIFICATION_HINTS_ARGS
 
-  type args = (Unification_Base.unifier,
-    (Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser),
-    Unification_Base.unifier) PA.entries
+  type args = (Unification_Base.unifier, Unification_Base.normalisers, Unification_Base.unifier)
+    PA.entries
 
   val try_hints : args -> Unification_Hints_Base.hint_retrieval -> Unification_Base.unifier
 
@@ -30,18 +29,15 @@ structure UHB = Unification_Hints_Base
 @{parse_entries (struct) PA
   [concl_unifier, normalisers, prems_unifier]}
 
-type args = (UB.unifier, (EN.term_normaliser * EN.thm_normaliser), UB.unifier) PA.entries
+type args = (UB.unifier, UB.normalisers, UB.unifier) PA.entries
 
 fun try_hints args retrieval =
-  let val (norm_term, norm_thm) = PA.get_normalisers args
-  in
-    UHB.try_hints retrieval (PA.get_concl_unifier args) norm_term norm_thm
-      (PA.get_prems_unifier args)
-  end
+  UHB.try_hints retrieval (PA.get_concl_unifier args) (PA.get_normalisers args)
+    (PA.get_prems_unifier args)
 
 val arg_parsers = {
   concl_unifier = SOME Unification_Parser.parse_unifier,
-  normalisers = SOME (Parse_Util.nonempty_code (K "normalisers must not be empty")),
+  normalisers = SOME Unification_Parser.parse_normalisers,
   prems_unifier = SOME Unification_Parser.parse_unifier
 }
 
@@ -59,10 +55,8 @@ sig
   val map_concl_unifier : (Unification_Base.unifier -> Unification_Base.unifier) ->
     Context.generic -> Context.generic
 
-  val get_normalisers : Context.generic ->
-    Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser
-  val map_normalisers : (Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser ->
-    Envir_Normalisation.term_normaliser * Envir_Normalisation.thm_normaliser) ->
+  val get_normalisers : Context.generic -> Unification_Base.normalisers
+  val map_normalisers : (Unification_Base.normalisers -> Unification_Base.normalisers) ->
     Context.generic -> Context.generic
 
   val get_prems_unifier : Context.generic -> Unification_Base.unifier
