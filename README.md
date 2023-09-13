@@ -8,8 +8,8 @@ and E-matching.
 While unifiers in Isabelle/ML only consider the alpha-beta-eta-equational theory of the lambda-calculus,
 unifiers in this article
 may take an extra background theory, in the form of an equational prover, into account.
-For example, the unification problem `n = ?m + 0`
-may be solved by providing a prover for the background theory `forall n. n + 0 = n`.
+For example, the unification problem `n + 1 = ?m + Suc 0`
+may be solved by providing a prover for the background theory `forall n. n + 1 = n + Suc 0`.
 2. Tactics, methods, and attributes with adjustable unifiers (e.g.\ resolution, fact, assumption, OF).
 3. A generalisation of [unification hints](https://www.researchgate.net/publication/221302555_Hints_in_Unification).
 Unification hints are a flexible extension for unifiers.
