@@ -14,7 +14,7 @@ experiment
 begin
 
 
-paragraph \<open>Using the simplifier for unification.\<close>
+subsection \<open>Using The Simplifier For Unification.\<close>
 
 inductive_set even :: "nat set" where
 zero: "0 \<in> even" |
@@ -59,7 +59,7 @@ lemma "(x + (y :: nat))^2 \<le> x^2 + 2*x*y + y^2 + 4 * y + x - y"
   supply power2_sum[simp]
   by (ufact TrueI)
 
-paragraph \<open>Providing canonical solutions for meta variables with unification hints\<close>
+subsection \<open>Providing Canonical Solutions With Unification Hints\<close>
 
 lemma [unif_hint]: "xs \<equiv> [] \<Longrightarrow> length xs \<equiv> 0" by simp
 
@@ -96,7 +96,7 @@ schematic_goal "n - ?m = length []"
   by (ufact refl)
 
 
-paragraph \<open>Strenghten unification with unification hints\<close>
+subsection \<open>Strenghten Unification With Unification Hints\<close>
 
 lemma
   assumes [unif_hint]: "n = m"
@@ -110,7 +110,7 @@ lemma
   by (ufact assms)
 
 
-text \<open>Unfolding definitions.\<close>
+paragraph \<open>Unfolding definitions.\<close>
 
 definition "mysuc n = Suc n"
 
@@ -133,7 +133,7 @@ lemma
   using assms by ufact
 
 
-paragraph \<open>Better control over meta variable instantiations\<close>
+subsection \<open>Better Control Over Meta Variable Instantiations\<close>
 
 text \<open>Consider the following type-inference problem.\<close>
 schematic_goal
@@ -141,7 +141,7 @@ schematic_goal
   and f_type: "\<And>x. ArgT x \<Longrightarrow> DomT x (f x)"
   and x_type: "ArgT x"
   shows "?T (f x)"
-  apply (urule app_typeI) \<comment>\<open>compare with the following application, creating an unintuitive instantiation\<close>
+  apply (urule app_typeI) \<comment>\<open>compare with the following application, creating an (unintuitive) higher-order instantiation\<close>
   (* apply (rule app_typeI) *)
   oops
 
