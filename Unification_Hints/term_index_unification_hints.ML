@@ -324,7 +324,7 @@ fun try_hints binders ctxt =
   let val context = Context.Proof ctxt
   in UH.try_hints (get_retrieval context (get_index context)) binders ctxt end
 
-val binding = FIU.mk_binding_id_prefix "unif_hint"
+val binding = FIU.mk_binding_id_prefix "uhint"
 
 val default_entries = PA.empty_entries () |> fold PA.set_entry [PA.prio TUHP.MEDIUM]
 

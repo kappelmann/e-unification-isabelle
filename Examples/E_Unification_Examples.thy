@@ -24,7 +24,7 @@ text \<open>Premises of the form @{term "SIMPS_TO_UNIF lhs rhs"} are solved by
 @{ML_structure Simplifier_Unification}. It first normalises @{term lhs} and then unifies the
 normalisation with @{term rhs}. See also @{theory ML_Unification.ML_Unification_HOL_Setup}.\<close>
 
-lemma [unif_hint where prio = Prio.LOW]: "n \<noteq> 0 \<Longrightarrow> PROP SIMPS_TO_UNIF (n - 1) m \<Longrightarrow> n \<equiv> Suc m"
+lemma [uhint where prio = Prio.LOW]: "n \<noteq> 0 \<Longrightarrow> PROP SIMPS_TO_UNIF (n - 1) m \<Longrightarrow> n \<equiv> Suc m"
   unfolding SIMPS_TO_UNIF_eq by linarith
 
 text \<open>By default, below unification methods use
@@ -66,12 +66,12 @@ lemma
 
 subsection \<open>Providing Canonical Solutions With Unification Hints\<close>
 
-lemma [unif_hint]: "xs \<equiv> [] \<Longrightarrow> length xs \<equiv> 0" by simp
+lemma [uhint]: "xs \<equiv> [] \<Longrightarrow> length xs \<equiv> 0" by simp
 
 schematic_goal "length ?xs = 0"
   by (ufact refl)
 
-lemma [unif_hint]: "(n :: nat) \<equiv> m \<Longrightarrow> n - m \<equiv> 0" by simp
+lemma [uhint]: "(n :: nat) \<equiv> m \<Longrightarrow> n - m \<equiv> 0" by simp
 
 schematic_goal "n - ?m = (0 :: nat)"
   by (ufact refl)
@@ -90,12 +90,12 @@ text \<open>There are two ways to fix this:
 
 text \<open>Solution 1: recursive usages of hints. Warning: such recursive applications easily loop.\<close>
 schematic_goal "n - ?m = length []"
-  using [[unif_hint where concl_unifier = Standard_Mixed_Unification.first_higherp_first_comb_higher_unify]]
+  using [[uhint where concl_unifier = Standard_Mixed_Unification.first_higherp_first_comb_higher_unify]]
   by (ufact refl)
 
 text \<open>Solution 2: make the recursion explicit in the hint.\<close>
 
-lemma [unif_hint]: "k \<equiv> 0 \<Longrightarrow> (n :: nat) \<equiv> m \<Longrightarrow> n - m \<equiv> k" by simp
+lemma [uhint]: "k \<equiv> 0 \<Longrightarrow> (n :: nat) \<equiv> m \<Longrightarrow> n - m \<equiv> k" by simp
 
 schematic_goal "n - ?m = length []"
   by (ufact refl)
@@ -104,14 +104,14 @@ schematic_goal "n - ?m = length []"
 subsection \<open>Strenghten Unification With Unification Hints\<close>
 
 lemma
-  assumes [unif_hint]: "n = m"
+  assumes [uhint]: "n = m"
   shows "n - m = (0 :: nat)"
   by (ufact refl)
 
 lemma
   assumes "x = y"
   shows "y = x"
-  supply eq_commute[unif_hint]
+  supply eq_commute[uhint]
   by (ufact assms)
 
 
@@ -122,13 +122,13 @@ definition "mysuc n = Suc n"
 lemma
   assumes "\<And>m. Suc n > mysuc m"
   shows "mysuc n > Suc 3"
-  supply mysuc_def[unif_hint]
+  supply mysuc_def[uhint]
   by (ufact assms)
 
 
 paragraph \<open>Discharging meta impliciations with object-level implications\<close>
 
-lemma [unif_hint]:
+lemma [uhint]:
   "Trueprop A \<equiv> A' \<Longrightarrow> Trueprop B \<equiv> B' \<Longrightarrow> Trueprop (A \<longrightarrow> B) \<equiv> (PROP A' \<Longrightarrow> PROP B')"
   using atomize_imp[symmetric] by simp
 

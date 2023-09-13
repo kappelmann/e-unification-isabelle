@@ -41,7 +41,7 @@ ML\<open>
 \<close>
 local_setup \<open>Standard_Unification_Hints.setup_attribute NONE\<close>
 
-text\<open>Standard unification hints are accessible via @{attribute unif_hint}.\<close>
+text\<open>Standard unification hints are accessible via @{attribute uhint}.\<close>
 
 declare [[ucombine add = \<open>Standard_Unification_Combine.eunif_data
   (Standard_Unification_Hints.try_hints
