@@ -1,3 +1,5 @@
+**This formalisation is now part of the AFP. Please refer to https://www.isa-afp.org/entries/ML_Unification.html**
+
 # ML-Unification
 
 ## Content
